@@ -27,6 +27,16 @@ Getting started is easy. First create a new project:
 
 `dotnet new console`
 
+Add the prerelease feed to your project. Your `NuGet.config` should look like this:
+```
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="Thor.Tasks Prerelease" value="https://www.myget.org/F/thor/api/v3/index.json" />
+  </packageSources>
+</configuration>
+```
+
 Then add the Thor.Tasks package:
 
 `dotnet package add Thor.Tasks`
