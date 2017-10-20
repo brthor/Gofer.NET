@@ -2,6 +2,7 @@
 version: 0.0.1-alpha
 
 ![Build Status](https://travis-ci.org/brthor/Thor.Tasks.svg?branch=master)
+![Myget Version Number](https://img.shields.io/myget/brthor/Thor.Tasks/YoloDev.Dnx.FSharp.svg
 
 The simplest possible way to run background tasks in c#. 
 
