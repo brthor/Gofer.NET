@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aq.ExpressionJsonSerializer" Version="0.18" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="StackExchange.Redis" Version="1.2.6" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Thor.Tasks.Tests\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Remove="Thor.Tasks.Tests\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Thor.Tasks.Tests\**" />
+  </ItemGroup>
+</Project>
