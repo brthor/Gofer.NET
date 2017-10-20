@@ -7,7 +7,7 @@ namespace Thor.Tasks.Tests
 {
     public class GivenARedisTaskQueue
     {
-        private const string TestRedisConnectionString = "localhost:9999";
+        private const string TestRedisConnectionString = "localhost:6379";
         private const string TestQueueName = nameof(GivenARedisTaskQueue) + "::TestQueue";
         
         [Fact]

@@ -18,7 +18,7 @@ namespace Thor.Tasks.Tests
             
             var intervalSeconds = 5;
             
-            var taskScheduler = new TaskScheduler(TaskQueue.Redis("localhost:9999"));
+            var taskScheduler = new TaskScheduler(TaskQueue.Redis("localhost:6379"));
             taskScheduler.AddScheduledTask(WriteCompletedSemaphore, TimeSpan.FromSeconds(intervalSeconds), "test");
             taskScheduler.Tick();
 

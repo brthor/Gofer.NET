@@ -41,7 +41,11 @@ namespace Thor.Tasks
         public TaskInfo Dequeue()
         {
             var jsonString = Backend.Dequeue();
-
+            if (jsonString == null)
+            {
+                return null;
+            }
+            
             var taskInfo = JsonNetAdapter.Deserialize<TaskInfo>(jsonString);
             return taskInfo;
         }
