@@ -1,10 +1,9 @@
 # Thor.Tasks
-version: 0.0.1-alpha
 
 ![Build Status](https://travis-ci.org/brthor/Thor.Tasks.svg?branch=master)
 ![Myget Version Number](https://img.shields.io/myget/thor/v/Thor.Tasks.svg?color=green)
 
-The simplest possible way to run background tasks in c#. 
+*The simplest possible way to run background tasks in c#.* 
 
 Keeping the code simple promotes good practices that avoid pain in delegate serialization over the network.
 

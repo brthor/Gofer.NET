@@ -25,7 +25,7 @@ namespace Thor.Tasks
 
         public void ExecuteTask()
         {
-            var assembly = System.Reflection.Assembly.Load(AssemblyName);
+            var assembly = Assembly.Load(AssemblyName);
             var type = assembly.GetType(TypeName);
             
             var method = type.GetMethod(MethodName, 

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using StackExchange.Redis;
 
 namespace Thor.Tasks
@@ -14,18 +15,22 @@ namespace Thor.Tasks
         
         public void Push(RedisKey stackName, RedisValue value)
         {
-            Redis.GetDatabase().ListRightPush(stackName, value);
+            Retry.OnException(() => Redis.GetDatabase().ListRightPush(stackName, value),
+                new[] {typeof(RedisTimeoutException)});
         }
 
         public RedisValue Pop(RedisKey stackName)
         {
-            return Redis.GetDatabase().ListLeftPop(stackName);
+            return Retry.OnException(() => Redis.GetDatabase().ListLeftPop(stackName),
+                new[] {typeof(RedisTimeoutException)});
         }
 
         public async Task<RedisValue[]> PopAll(RedisKey stackName)
         {
             var db = Redis.GetDatabase();
-            var listLength = db.ListLength(stackName);
+
+            var lockName = "PopAllLock::" + (string) stackName;
+            var listLength = db.ListLength(lockName);
             
             var transaction = db.CreateTransaction();
             var listValuesTask = transaction.ListRangeAsync(stackName, stop: listLength - 1);
