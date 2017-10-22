@@ -1,4 +1,4 @@
-# Thor.Tasks
+# Thor.Tasks: Easy distributed tasks/jobs for .NET Core
 
 ![Build Status](https://travis-ci.org/brthor/Thor.Tasks.svg?branch=master)
 ![Myget Version Number](https://img.shields.io/myget/thor/v/Thor.Tasks.svg?color=green)
