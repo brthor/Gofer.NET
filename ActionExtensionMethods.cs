@@ -1,10 +1,33 @@
 ﻿using System;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Thor.Tasks
 {
     public static class ActionExtensionMethods
     {
+        public static TaskInfo ToTaskInfo(this Expression<Action> expression)
+        {
+            var methodCallArgumentResolutionVisitor = new TaskQueue.MethodCallArgumentResolutionVisitor();
+            var expressionWithArgumentsResolved =
+                (Expression<Action>) methodCallArgumentResolutionVisitor.Visit(expression);
+
+            var method = ((MethodCallExpression) expressionWithArgumentsResolved.Body);
+            var m = method.Method;
+            var args = method.Arguments
+                .Select(a =>
+                {
+                    var value = ((ConstantExpression) a).Value;
+                    return value;
+                })
+                .ToArray();
+
+            var taskInfo = m.ToTaskInfo(args);
+
+            return taskInfo;
+        }
+        
         public static TaskInfo ToTaskInfo(this MethodInfo method, object[] args)
         {
             var taskInfo = new TaskInfo
@@ -16,31 +39,6 @@ namespace Thor.Tasks
             };
             
             return taskInfo;
-        }
-        
-        public static TaskInfo ToTaskInfo<T1, T2, T3, T4>(this Action<T1, T2, T3, T4> action, object[] args)
-        {
-            return action.Method.ToTaskInfo(args);
-        }
-        
-        public static TaskInfo ToTaskInfo<T1, T2, T3>(this Action<T1, T2, T3> action, object[] args)
-        {
-            return action.Method.ToTaskInfo(args);
-        }
-        
-        public static TaskInfo ToTaskInfo<T1, T2>(this Action<T1, T2> action, object[] args)
-        {
-            return action.Method.ToTaskInfo(args);
-        }
-        
-        public static TaskInfo ToTaskInfo<T>(this Action<T> action, object[] args)
-        {
-            return action.Method.ToTaskInfo(args);
-        }
-        
-        public static TaskInfo ToTaskInfo(this Action action, object[] args)
-        {
-            return action.Method.ToTaskInfo(args);
         }
     }
 }

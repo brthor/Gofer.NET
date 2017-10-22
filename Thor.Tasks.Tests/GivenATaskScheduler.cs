@@ -19,7 +19,7 @@ namespace Thor.Tasks.Tests
             var intervalSeconds = 2;
             
             var taskScheduler = new TaskScheduler(TaskQueue.Redis("localhost:6379"));
-            taskScheduler.AddScheduledTask(TaskQueueTestFixture.WriteSempaphore, semaphoreFile,
+            taskScheduler.AddScheduledTask(() => TaskQueueTestFixture.WriteSempaphore(semaphoreFile),
                 TimeSpan.FromSeconds(intervalSeconds), "test");
             taskScheduler.Tick();
 
@@ -35,7 +35,8 @@ namespace Thor.Tasks.Tests
             Thread.Sleep(((intervalSeconds) * 1000) + 10);
             taskScheduler.Tick();
             File.Exists(semaphoreFile).Should().Be(true);
-            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText + TaskQueueTestFixture.SemaphoreText);
+            File.ReadAllText(semaphoreFile).Should()
+                .Be(TaskQueueTestFixture.SemaphoreText + TaskQueueTestFixture.SemaphoreText);
         }
 
         [Fact]
@@ -57,7 +58,8 @@ namespace Thor.Tasks.Tests
 
             foreach (var taskScheduler in taskSchedulers)
             {
-                taskScheduler.AddScheduledTask(TaskQueueTestFixture.WriteSempaphore, semaphoreFile, TimeSpan.FromSeconds(intervalSeconds), "test");
+                taskScheduler.AddScheduledTask(() => TaskQueueTestFixture.WriteSempaphore(semaphoreFile),
+                    TimeSpan.FromSeconds(intervalSeconds), "test");
             }
             
             Thread.Sleep(((intervalSeconds) * 1000) + 1000);
@@ -78,7 +80,8 @@ namespace Thor.Tasks.Tests
                 taskSchedulers.Select(
                     taskScheduler =>
                         Task.Run(() => taskScheduler.Tick())).ToArray(), 1000);
-            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText + TaskQueueTestFixture.SemaphoreText);
+            File.ReadAllText(semaphoreFile).Should()
+                .Be(TaskQueueTestFixture.SemaphoreText + TaskQueueTestFixture.SemaphoreText);
         }
     }
 }

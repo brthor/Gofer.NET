@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 
@@ -91,16 +92,11 @@ namespace Thor.Tasks
             _scheduledTasks = new Dictionary<string, TaskSchedule>();
         }
         
-        public void AddScheduledTask(Action action, TimeSpan interval, string taskName)
+        public void AddScheduledTask(Expression<Action> action, TimeSpan interval, string taskName)
         {
-            AddScheduledTask(action.ToTaskInfo(new object[] {}), interval, taskName);
+            AddScheduledTask(action.ToTaskInfo(), interval, taskName);
         }
         
-        public void AddScheduledTask<T>(Action<T> action, T argument, TimeSpan interval, string taskName)
-        {
-            AddScheduledTask(action.ToTaskInfo(new object[] {argument}), interval, taskName);
-        }
-
         internal void AddScheduledTask(TaskInfo taskInfo, TimeSpan interval, string taskName)
         {
             // TODO: Support Scheduled Tasks with args
