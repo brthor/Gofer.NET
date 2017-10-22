@@ -56,13 +56,10 @@ namespace Thor.Tasks
             var m = method.Method;
             var args = method.Arguments
                 .Select(a =>
-                        {
-                            var value = Expression.Lambda(a).Compile().DynamicInvoke();
-                            if (a.Type == typeof(object))
-                                return (object) value;
-                            
-                            return Convert.ChangeType(value, a.Type);
-                        })
+                {
+                    var value = ((ConstantExpression) a).Value;
+                    return value;
+                })
                 .ToArray();
 
             var taskInfo = m.ToTaskInfo(args);
@@ -81,10 +78,13 @@ namespace Thor.Tasks
 
         public void Enqueue(TaskInfo taskInfo)
         {
-            var jsonString = JsonConvert.SerializeObject(taskInfo, new JsonSerializerSettings
+            var settings = new JsonSerializerSettings
             {
-                TypeNameHandling = TypeNameHandling.Auto
-            });
+                TypeNameHandling = TypeNameHandling.All
+            };
+            settings.Converters.Insert(0, new JsonPrimitiveConverter());
+            
+            var jsonString = JsonConvert.SerializeObject(taskInfo, settings);
 
             Backend.Enqueue(jsonString);
         }
@@ -104,10 +104,13 @@ namespace Thor.Tasks
                 return null;
             }
             
-            var taskInfo = JsonConvert.DeserializeObject<TaskInfo>(jsonString, new JsonSerializerSettings
+            var settings = new JsonSerializerSettings
             {
-                TypeNameHandling = TypeNameHandling.Objects
-            });
+                TypeNameHandling = TypeNameHandling.All
+            };
+            settings.Converters.Insert(0, new JsonPrimitiveConverter());
+
+            var taskInfo = JsonConvert.DeserializeObject<TaskInfo>(jsonString, settings);
             return taskInfo;
         }
     }

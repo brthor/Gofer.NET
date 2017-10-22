@@ -23,10 +23,10 @@ namespace Thor.Tasks
         [DataMember]
         public object[] Args { get; set; }
 
-        public object[] ArgsWithPatchedTypes()
-        {
-            return Args.Select(a => a is long ? Convert.ToInt32(a) : a).ToArray();
-        }
+//        public object[] ArgsWithPatchedTypes()
+//        {
+//            return Args.Select(a => a is long ? Convert.ToInt32(a) : a).ToArray();
+//        }
 
         public void ExecuteTask()
         {
@@ -52,7 +52,7 @@ namespace Thor.Tasks
 
             var instance = Activator.CreateInstance(type);
             
-            instanceMethod.Invoke(instance, ArgsWithPatchedTypes());
+            instanceMethod.Invoke(instance, Args);
         }
     }
 }
