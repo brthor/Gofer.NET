@@ -23,7 +23,6 @@ Here's a quick example using the same machine to execute jobs:
     {
         Console.WriteLine("Now!");
     }
-}
 ```
 
 Currently requires a Redis backend to function, but other backends may be developed relatively easily.
