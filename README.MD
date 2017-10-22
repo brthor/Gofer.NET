@@ -3,18 +3,16 @@
 ![Build Status](https://travis-ci.org/brthor/Thor.Tasks.svg?branch=master)
 ![Myget Version Number](https://img.shields.io/myget/thor/v/Thor.Tasks.svg?color=green)
 
-*The simplest possible way to run background tasks in c#.* 
+## What is this?
+Inspired by celery for python, this is a distributed job runner for .NET Standard 2.0. 
+Run individual jobs or scheduled jobs on multiple machines.
 
-Keeping the code simple promotes good practices that avoid pain in delegate serialization over the network.
-
-TODO:
- - Task Chains
- - Support more delegate types (lambda expressions?)
- - Task Scheduler Tasks with arguments
- - Make things actually work distributed
+Currently requires a Redis backend to function, but other backends may be developed relatively easily.
  
 ## Getting Started
+*Get started with background jobs for your web app in 1 minute* 
 
+#### Install the dotnet cli
 We recommend using the dotnet cli, to get started, but it's not a necessity.
 Thor.Tasks is a `netstandard2.0` project, so you will need the 2.0.0 version of the dotnet cli.
 
@@ -23,10 +21,12 @@ $ dotnet --version
 2.0.0
 ```
  
+#### Create a Project
 Getting started is easy. First create a new project:
 
 `dotnet new console`
 
+#### Add our NuGet Package to your project
 Add the prerelease feed to your project. Your `NuGet.config` should look like this:
 ```
 <?xml version="1.0" encoding="utf-8"?>
@@ -41,6 +41,7 @@ Then add the Thor.Tasks package:
 
 `dotnet package add Thor.Tasks`
 
+#### Put it all together
 Finally, setup your Program.cs like so:
 
 ```c#
@@ -69,6 +70,4 @@ public class Program
     }
 }
 ```
-
-TODO See complete docs.
  
