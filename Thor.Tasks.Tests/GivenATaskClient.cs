@@ -16,8 +16,8 @@ namespace Thor.Tasks.Tests
             var taskClient = new TaskClient(TaskQueue.Redis("localhost:6379", nameof(ItContinuesListeningWhenATaskThrowsAnException)));
             var semaphoreFile = Path.GetTempFileName();
             
-            taskClient.TaskQueue.Enqueue(Throw);
-            taskClient.TaskQueue.Enqueue<string>(TaskQueueTestFixture.WriteSempaphore, new object[] {semaphoreFile});
+            taskClient.TaskQueue.Enqueue(() => Throw());
+            taskClient.TaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSempaphore(semaphoreFile));
 
             var task = Task.Run(() => taskClient.Listen());
             Thread.Sleep(waitTime);

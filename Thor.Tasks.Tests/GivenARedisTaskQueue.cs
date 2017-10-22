@@ -123,7 +123,7 @@ namespace Thor.Tasks.Tests
                 semaphoreFiles.Add(path);
                 
                 var sharedTaskQueue = consumers[0].TaskQueue;
-                sharedTaskQueue.Enqueue<string>(TaskQueueTestFixture.WriteSempaphore, new object[] {path});
+                sharedTaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSempaphore(path));
             }
 
             var tasks = new List<Task>();

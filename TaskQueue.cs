@@ -65,18 +65,8 @@ namespace Thor.Tasks
             var taskInfo = m.ToTaskInfo(args);
             Enqueue(taskInfo);
         }
-        
-        public void Enqueue<T>(Action<T> action, object[] args=null)
-        {
-            Enqueue(action.ToTaskInfo(args));
-        }
 
-        public void Enqueue(Action action, object[] args=null)
-        {
-            Enqueue(action.ToTaskInfo(args));
-        }
-
-        public void Enqueue(TaskInfo taskInfo)
+        private void Enqueue(TaskInfo taskInfo)
         {
             var settings = new JsonSerializerSettings
             {

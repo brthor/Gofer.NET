@@ -30,7 +30,7 @@ namespace Thor.Tasks.Tests
 
         public void PushPopExecuteWriteSemaphore()
         {
-            TaskQueue.Enqueue<string>(WriteSempaphore, new object[] {_semaphoreFile});
+            TaskQueue.Enqueue(() => WriteSempaphore(_semaphoreFile));
             var dequeuedTaskInfo = TaskQueue.Dequeue();
             dequeuedTaskInfo.ExecuteTask();
         }
