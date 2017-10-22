@@ -21,7 +21,9 @@ namespace Thor.Tasks
         public static T OnException<T>(Func<T> func, Type[] handledExceptions, 
             int retryCount=10, int startingDelay=100, int backoffFactor=2, double backoffVariance=0.2)
         {
-            var pseudoFunc = new Func<T>(() =>
+            var delay = startingDelay;
+            
+            for (var retry = 1; retry <= retryCount; ++retry)
             {
                 T ret;
                 try
@@ -30,18 +32,26 @@ namespace Thor.Tasks
                 }
                 catch (Exception e)
                 {
-                    if (handledExceptions.Contains(e.GetType()))
-                    {
-                        return default(T);
-                    }
+                    if (retry == retryCount)
+                        throw;
+
+                    if (!handledExceptions.Contains(e.GetType()))
+                        throw;
                     
-                    throw;
+                    Console.WriteLine("Retrying... ");
+                    Console.WriteLine(e.Message);
+                    
+                    Thread.Sleep(delay); // TODO: Task.Delay, async api
+
+                    var variedBackoffFactor = backoffFactor + (new Random().NextDouble() * backoffVariance);
+                    delay = (int) (delay * variedBackoffFactor);
+                    continue;
                 }
 
                 return ret;
-            });
+            }
 
-            return OnValue(pseudoFunc, default(T), retryCount, startingDelay, backoffFactor, backoffVariance);
+            throw new Exception("Should be unreachable");
         }
         
         public static T OnValue<T>(Func<T> func, T value, 
