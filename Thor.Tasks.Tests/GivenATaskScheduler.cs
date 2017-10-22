@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Xunit;
 
@@ -8,32 +10,75 @@ namespace Thor.Tasks.Tests
 {
     public class GivenATaskScheduler
     {
-        private static string SemaphoreFile =>  Path.Combine(AppContext.BaseDirectory,
-            nameof(ItExecutesTasksAtTheSpecifiedInterval));
-        
         [Fact]
         public void ItExecutesTasksAtTheSpecifiedInterval()
         {
-            File.Delete(SemaphoreFile);
+            var semaphoreFile = Path.GetTempFileName();
+            File.Delete(semaphoreFile);
             
             var intervalSeconds = 5;
             
             var taskScheduler = new TaskScheduler(TaskQueue.Redis("localhost:6379"));
-            taskScheduler.AddScheduledTask(WriteCompletedSemaphore, TimeSpan.FromSeconds(intervalSeconds), "test");
+            taskScheduler.AddScheduledTask(TaskQueueTestFixture.WriteSempaphore, semaphoreFile,
+                TimeSpan.FromSeconds(intervalSeconds), "test");
             taskScheduler.Tick();
 
-            File.Exists(SemaphoreFile).Should().Be(false);
+            File.Exists(semaphoreFile).Should().Be(false);
             
-            Thread.Sleep((intervalSeconds + 1) * 1000);
-            
+            // Confirm Scheduled Task Ran once
+            Thread.Sleep(((intervalSeconds) * 1000) + 10);
             taskScheduler.Tick();
-            File.Exists(SemaphoreFile).Should().Be(true);
-            File.ReadAllText(SemaphoreFile).Should().Be("Complete");
+            File.Exists(semaphoreFile).Should().Be(true);
+            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText);
+            
+            // Confirm Ran TWICE
+            Thread.Sleep(((intervalSeconds) * 1000) + 10);
+            taskScheduler.Tick();
+            File.Exists(semaphoreFile).Should().Be(true);
+            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText + TaskQueueTestFixture.SemaphoreText);
         }
-        
-        private static void WriteCompletedSemaphore()
+
+        [Fact]
+        public void ItExecutesTasksOnlyOnceWhenUsingMultipleConsumers()
         {
-            File.WriteAllText(SemaphoreFile, "Complete");
+            var semaphoreFile = Path.GetTempFileName();
+            File.Delete(semaphoreFile);
+            File.Create(semaphoreFile).Close();
+            
+            var intervalSeconds = 5;
+
+            var taskSchedulers = new[]
+            {
+                new TaskScheduler(TaskQueue.Redis("localhost:6379")),
+                new TaskScheduler(TaskQueue.Redis("localhost:6379")),
+                new TaskScheduler(TaskQueue.Redis("localhost:6379")),
+                new TaskScheduler(TaskQueue.Redis("localhost:6379"))
+            };
+
+            foreach (var taskScheduler in taskSchedulers)
+            {
+                taskScheduler.AddScheduledTask(TaskQueueTestFixture.WriteSempaphore, semaphoreFile, TimeSpan.FromSeconds(intervalSeconds), "test");
+            }
+            
+            Thread.Sleep(((intervalSeconds) * 1000) + 1000);
+
+            // Ran only once
+            Task.WaitAll(
+                taskSchedulers.Select(
+                    taskScheduler =>
+                        Task.Run(() => taskScheduler.Tick())).ToArray(), 1000);
+            
+            File.Exists(semaphoreFile).Should().Be(true);
+            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText);
+            
+            
+            // Ran only twice
+            Thread.Sleep(((intervalSeconds) * 1000) + 1000);
+            Task.WaitAll(
+                taskSchedulers.Select(
+                    taskScheduler =>
+                        Task.Run(() => taskScheduler.Tick())).ToArray(), 1000);
+            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText + TaskQueueTestFixture.SemaphoreText);
         }
     }
 }

@@ -21,9 +21,7 @@ namespace Thor.Tasks
         public static T OnException<T>(Func<T> func, Type[] handledExceptions, 
             int retryCount=10, int startingDelay=100, int backoffFactor=2, double backoffVariance=0.2)
         {
-            var delay = startingDelay;
-            
-            for (var retry = 1; retry <= retryCount; ++retry)
+            var pseudoFunc = new Func<T>(() =>
             {
                 T ret;
                 try
@@ -32,15 +30,35 @@ namespace Thor.Tasks
                 }
                 catch (Exception e)
                 {
-                    if (retry == retryCount)
-                        throw;
+                    if (handledExceptions.Contains(e.GetType()))
+                    {
+                        return default(T);
+                    }
+                    
+                    throw;
+                }
 
-                    if (!handledExceptions.Contains(e.GetType()))
-                        throw;
-                    
+                return ret;
+            });
+
+            return OnValue(pseudoFunc, default(T), retryCount, startingDelay, backoffFactor, backoffVariance);
+        }
+        
+        public static T OnValue<T>(Func<T> func, T value, 
+            int retryCount=10, int startingDelay=100, int backoffFactor=2, double backoffVariance=0.2)
+        {
+            var delay = startingDelay;
+            
+            for (var retry = 1; retry <= retryCount; ++retry)
+            {
+                var ret = func();
+                
+                if (ret.Equals(value))
+                {
+                    if (retry == retryCount)
+                        throw new Exception("Invalid value");
+
                     Console.WriteLine("Retrying... ");
-                    Console.WriteLine(e.Message);
-                    
                     Thread.Sleep(delay); // TODO: Task.Delay, async api
 
                     var variedBackoffFactor = backoffFactor + (new Random().NextDouble() * backoffVariance);
@@ -54,4 +72,6 @@ namespace Thor.Tasks
             throw new Exception("Should be unreachable");
         }
     }
+    
+    
 }

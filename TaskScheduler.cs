@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using StackExchange.Redis;
 
 namespace Thor.Tasks
 {
@@ -8,33 +10,70 @@ namespace Thor.Tasks
     {
         private class TaskSchedule
         {
+            private readonly ITaskQueueBackend _backend;
             private DateTime StartTime { get; }
-            
-            private DateTime? LastExecutedTime { get; set; }
             
             private TaskInfo TaskInfo { get; set; }
             
             private TimeSpan Interval { get; set; }
 
-            public TaskSchedule(TaskInfo taskInfo, TimeSpan interval)
+            public TaskSchedule(
+                TaskInfo taskInfo, 
+                TimeSpan interval,
+                ITaskQueueBackend backend)
             {
+                _backend = backend;
                 TaskInfo = taskInfo;
                 Interval = interval;
                 StartTime = DateTime.Now;
             }
 
-            public void RunIfIntervalReachedSinceLastRun()
+            public void RunIfIntervalReachedSinceLastRun(string taskId)
             {
-                var lastRunTime = LastExecutedTime ?? StartTime;
-
-                var difference = DateTime.Now - lastRunTime;
-                if (difference > Interval)
+                var lockKey = $"{nameof(TaskSchedule)}::{taskId}::ScheduleLock";
+                var lastRunValueKey = $"{nameof(TaskSchedule)}::{taskId}::LastRunValue";
+                
+                var backendLock = _backend.LockBlocking(lockKey);
+                try
                 {
-                    LogScheduledTaskRun();
+                    var lastRunTime = GetLastRunTime(lastRunValueKey); 
+
+                    var difference = DateTime.Now - lastRunTime;
+                    if (difference > Interval)
+                    {
+                        SetLastRunTime(lastRunValueKey);
+                        LogScheduledTaskRun();
                     
-                    LastExecutedTime = DateTime.Now;
-                    TaskInfo.ExecuteTask();
+                        TaskInfo.ExecuteTask();
+                    }
                 }
+                finally
+                {
+                    backendLock.Release();
+                }
+            }
+
+            /// <summary>
+            /// Not Thread safe. Use External locking.
+            /// </summary>
+            private DateTime GetLastRunTime(string lastRunValueKey)
+            {
+                var jsonString = _backend.GetString(lastRunValueKey);
+
+                if (string.IsNullOrEmpty(jsonString))
+                {
+                    return StartTime;
+                }
+
+                return JsonConvert.DeserializeObject<DateTime>(jsonString);
+            }
+            
+            /// <summary>
+            /// Not thread safe. Use external locking.
+            /// </summary>
+            private void SetLastRunTime(string lastRunValueKey)
+            {
+                _backend.SetString(lastRunValueKey, JsonConvert.SerializeObject(DateTime.Now));
             }
 
             private void LogScheduledTaskRun()
@@ -44,7 +83,7 @@ namespace Thor.Tasks
         }
 
         private readonly TaskQueue _taskQueue;
-        private Dictionary<string, TaskSchedule> _scheduledTasks;
+        private readonly Dictionary<string, TaskSchedule> _scheduledTasks;
 
         public TaskScheduler(TaskQueue taskQueue)
         {
@@ -57,23 +96,24 @@ namespace Thor.Tasks
             AddScheduledTask(action.ToTaskInfo(new object[] {}), interval, taskName);
         }
         
-        public void AddScheduledTask<T>(Action<T> action, TimeSpan interval, string taskName)
+        public void AddScheduledTask<T>(Action<T> action, T argument, TimeSpan interval, string taskName)
         {
-            AddScheduledTask(action.ToTaskInfo(new object[] {}), interval, taskName);
+            AddScheduledTask(action.ToTaskInfo(new object[] {argument}), interval, taskName);
         }
 
         internal void AddScheduledTask(TaskInfo taskInfo, TimeSpan interval, string taskName)
         {
             // TODO: Support Scheduled Tasks with args
-            _scheduledTasks[taskName] = new TaskSchedule(taskInfo, interval);
+            _scheduledTasks[taskName] = new TaskSchedule(taskInfo, interval, _taskQueue.Backend);
         }
 
         public void Tick()
         {
             foreach (var taskKvp in _scheduledTasks)
             {
+                var taskId = taskKvp.Key;
                 var task = taskKvp.Value;
-                task.RunIfIntervalReachedSinceLastRun();
+                task.RunIfIntervalReachedSinceLastRun(taskId);
             }
         }
     }

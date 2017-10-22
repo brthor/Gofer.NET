@@ -7,6 +7,8 @@ namespace Thor.Tasks.Tests
 {
     public class TaskQueueTestFixture
     {
+        private static readonly ReaderWriterLock locker = new ReaderWriterLock();
+        
         public static string SemaphoreText => "completed";
         
         public TaskQueue TaskQueue { get; }
@@ -46,7 +48,15 @@ namespace Thor.Tasks.Tests
 
         public static void WriteSempaphore(string semaphoreFile)
         {
-            File.AppendAllText(semaphoreFile, SemaphoreText);
+            try
+            {
+                locker.AcquireWriterLock(int.MaxValue); 
+                File.AppendAllText(semaphoreFile, SemaphoreText);
+            }
+            finally
+            {
+                locker.ReleaseWriterLock();
+            }
         }
     }
 }

@@ -26,5 +26,20 @@ namespace Thor.Tasks
             var jsonString = RedisQueue.Pop(QueueName);
             return jsonString;
         }
+
+        public IBackendLock LockBlocking(string lockKey)
+        {
+            return Redis.LockBlocking(lockKey);
+        }
+
+        public void SetString(string key, string value)
+        {
+            Redis.GetDatabase().StringSet(key, value);
+        }
+
+        public string GetString(string key)
+        {
+            return Redis.GetDatabase().StringGet(key);
+        }
     }
 }
