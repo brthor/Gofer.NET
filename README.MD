@@ -15,13 +15,13 @@ Here's a quick example using the same machine to execute jobs:
 
         var taskQueue = TaskQueue.Redis(redisConnectString);
         
-        taskQueue.Enqueue(RunTaskNow);
+        taskQueue.Enqueue(() => RunTask("echo"));
         taskQueue.ExecuteNext();
     }
     
-    private static void RunTaskNow()
+    private static void RunTask(string message)
     {
-        Console.WriteLine("Now!");
+        Console.WriteLine(message);
     }
 ```
 

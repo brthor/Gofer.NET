@@ -24,14 +24,20 @@ namespace Thor.Tasks.Tests
         public void ItCapturesArgumentsPassedToEnqueuedDelegate()
         {
             var testFixture = new TaskQueueTestFixture(nameof(ItCapturesArgumentsPassedToEnqueuedDelegate));
-            
 
+            var d1 = new DateTime?();
+            d1 = DateTime.MaxValue;
+            
             var values = new object[]
             {
                 1,
                 "theboss",
                 new TestDataHolder {Value = "thebossss"},
-                false
+                false,
+                DateTime.Now,
+                DateTime.UtcNow,
+                d1, 
+                null
             };
 
             foreach (var value in values)
@@ -42,7 +48,7 @@ namespace Thor.Tasks.Tests
                 testFixture.TaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, value)); 
                 testFixture.TaskQueue.ExecuteNext();
 
-                File.ReadAllText(semaphoreFile).Should().Be(value.ToString());
+                File.ReadAllText(semaphoreFile).Should().Be(value?.ToString() ?? "null");
                 File.Delete(semaphoreFile);
             }
         }

@@ -69,7 +69,7 @@ namespace Thor.Tasks.Tests
             try
             {
                 locker.AcquireWriterLock(int.MaxValue); 
-                File.AppendAllText(semaphoreFile, value.ToString());
+                File.AppendAllText(semaphoreFile, value?.ToString() ?? "null");
             }
             finally
             {
