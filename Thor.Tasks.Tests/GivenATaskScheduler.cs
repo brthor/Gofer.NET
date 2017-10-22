@@ -16,7 +16,7 @@ namespace Thor.Tasks.Tests
             var semaphoreFile = Path.GetTempFileName();
             File.Delete(semaphoreFile);
             
-            var intervalSeconds = 5;
+            var intervalSeconds = 2;
             
             var taskScheduler = new TaskScheduler(TaskQueue.Redis("localhost:6379"));
             taskScheduler.AddScheduledTask(TaskQueueTestFixture.WriteSempaphore, semaphoreFile,
