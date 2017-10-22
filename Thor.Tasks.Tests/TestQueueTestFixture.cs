@@ -43,7 +43,12 @@ namespace Thor.Tasks.Tests
 
         public void EnsureSemaphore()
         {
-            File.ReadAllText(_semaphoreFile).Should().Be(SemaphoreText);
+            EnsureSemaphore(_semaphoreFile);
+        }
+        
+        public static void EnsureSemaphore(string semaphoreFile)
+        {
+            File.ReadAllText(semaphoreFile).Should().Be(SemaphoreText);
         }
 
         public static void WriteSempaphore(string semaphoreFile)
