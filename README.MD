@@ -79,7 +79,7 @@ public class Program
         taskClient.TaskQueue.Enqueue(() => RunTaskNow(myCustom));
         
         // Run a scheduled task at a defined interval
-        taskClient.TaskScheduler.AddScheduledTask(ScheduledTask, TimeSpan.FromSeconds(5), "scheduledTaskName");
+        taskClient.TaskScheduler.AddScheduledTask(() => ScheduledTask(), TimeSpan.FromSeconds(5), "scheduledTaskName");
         
         // Start the task listener, effectively turning this node into a worker.
         // At least one listener is required for scheduled or enqueued jobs to run.
