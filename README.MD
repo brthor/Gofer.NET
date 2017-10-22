@@ -7,6 +7,25 @@
 Inspired by celery for python, this is a distributed job runner for .NET Standard 2.0. 
 Run individual jobs or scheduled jobs on multiple machines.
 
+Here's a quick example using the same machine to execute jobs:
+```c#
+    public static void Main(string[] args)
+    {
+        var redisConnectString = "..."
+
+        var taskQueue = TaskQueue.Redis(redisConnectString);
+        
+        taskQueue.Enqueue(RunTaskNow);
+        taskQueue.ExecuteNext();
+    }
+    
+    private static void RunTaskNow()
+    {
+        Console.WriteLine("Now!");
+    }
+}
+```
+
 Currently requires a Redis backend to function, but other backends may be developed relatively easily.
  
 ## Getting Started
