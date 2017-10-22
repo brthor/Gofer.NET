@@ -60,7 +60,8 @@ Then add the Thor.Tasks package:
 `dotnet package add Thor.Tasks`
 
 #### Put it all together
-Finally, setup your Program.cs like so:
+You can enqueue a function with any arguments that can be serialized. See examples below.
+Setup your Program.cs to run the task client like so:
 
 ```c#
 public class Program
@@ -71,20 +72,38 @@ public class Program
 
         var taskClient = new TaskClient(TaskQueue.Redis(redisConnectString));
         
-        taskClient.TaskQueue.Enqueue(RunTaskNow);
+        var aStr = "astring";
+        taskClient.TaskQueue.Enqueue(() => RunTaskNow(aStr));
+        
+        var myCustom = new CustomClass {Value="Custom!"};
+        taskClient.TaskQueue.Enqueue(() => RunTaskNow(myCustom));
+        
+        // Run a scheduled task at a defined interval
         taskClient.TaskScheduler.AddScheduledTask(ScheduledTask, TimeSpan.FromSeconds(5), "scheduledTaskName");
         
+        // Start the task listener, effectively turning this node into a worker.
+        // At least one listener is required for scheduled or enqueued jobs to run.
         taskClient.Listen();
     }
     
-    private static void RunTaskNow()
+    private static void RunTaskNow(object value)
     {
-        Console.WriteLine("Now!");
+        Console.WriteLine(value.ToString());
     }
     
     private static void ScheduledTask()
     {
-        Console.WriteLine("Then!");
+        Console.WriteLine("Scheduled!");
+    }
+    
+    private class CustomClass
+    {
+        public string Value { get; set; }
+        
+        public override string ToString()
+        {
+            return Value;
+        }
     }
 }
 ```
