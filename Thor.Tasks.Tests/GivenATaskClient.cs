@@ -21,7 +21,7 @@ namespace Thor.Tasks.Tests
 
             var task = Task.Run(() => taskClient.Listen());
             Thread.Sleep(waitTime);
-x
+
             taskClient.CancelListen();
             task.Wait();
             

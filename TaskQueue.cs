@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
@@ -24,6 +26,48 @@ namespace Thor.Tasks
                 ThreadPool.SetMinThreads(200, 200);
             }
         }
+
+        public class MethodCallArgumentResolutionVisitor : ExpressionVisitor
+        {
+            protected override Expression VisitMethodCall(MethodCallExpression node)
+            {
+                var argumentExpressions = new List<Expression>();
+                foreach (var argument in node.Arguments)
+                {
+                    var argumentResolver = Expression.Lambda(argument);
+                    var argumentValue = argumentResolver.Compile().DynamicInvoke();
+
+                    var valueExpression = Expression.Constant(argumentValue, argument.Type);
+                    argumentExpressions.Add(valueExpression);
+                }
+                
+                return Expression.Call(node.Object, node.Method, argumentExpressions);
+            }
+        }
+
+        public void Enqueue(Expression<Action> expression)
+        {
+            
+            var methodCallArgumentResolutionVisitor = new MethodCallArgumentResolutionVisitor();
+            var expressionWithArgumentsResolved =
+                (Expression<Action>) methodCallArgumentResolutionVisitor.Visit(expression);
+
+            var method = ((MethodCallExpression) expressionWithArgumentsResolved.Body);
+            var m = method.Method;
+            var args = method.Arguments
+                .Select(a =>
+                        {
+                            var value = Expression.Lambda(a).Compile().DynamicInvoke();
+                            if (a.Type == typeof(object))
+                                return (object) value;
+                            
+                            return Convert.ChangeType(value, a.Type);
+                        })
+                .ToArray();
+
+            var taskInfo = m.ToTaskInfo(args);
+            Enqueue(taskInfo);
+        }
         
         public void Enqueue<T>(Action<T> action, object[] args=null)
         {
@@ -37,7 +81,10 @@ namespace Thor.Tasks
 
         public void Enqueue(TaskInfo taskInfo)
         {
-            var jsonString = JsonConvert.SerializeObject(taskInfo);
+            var jsonString = JsonConvert.SerializeObject(taskInfo, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Auto
+            });
 
             Backend.Enqueue(jsonString);
         }
@@ -57,7 +104,10 @@ namespace Thor.Tasks
                 return null;
             }
             
-            var taskInfo = JsonConvert.DeserializeObject<TaskInfo>(jsonString);
+            var taskInfo = JsonConvert.DeserializeObject<TaskInfo>(jsonString, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Objects
+            });
             return taskInfo;
         }
     }

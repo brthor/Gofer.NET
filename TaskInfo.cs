@@ -23,20 +23,36 @@ namespace Thor.Tasks
         [DataMember]
         public object[] Args { get; set; }
 
+        public object[] ArgsWithPatchedTypes()
+        {
+            return Args.Select(a => a is long ? Convert.ToInt32(a) : a).ToArray();
+        }
+
         public void ExecuteTask()
         {
             var assembly = Assembly.Load(AssemblyName);
             var type = assembly.GetType(TypeName);
             
-            var method = type.GetMethod(MethodName, 
+            var staticMethod = type.GetMethod(MethodName, 
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
-            if (method == null)
+            if (staticMethod != null)
+            {
+                staticMethod.Invoke(null, Args);
+                return;
+            }
+            
+            var instanceMethod = type.GetMethod(MethodName, 
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            
+            if (instanceMethod == null)
             {
                 throw new UnableToDeserializeDelegateException();
             }
 
-            method.Invoke(null, Args);
+            var instance = Activator.CreateInstance(type);
+            
+            instanceMethod.Invoke(instance, ArgsWithPatchedTypes());
         }
     }
 }

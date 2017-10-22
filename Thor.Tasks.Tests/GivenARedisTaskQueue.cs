@@ -10,6 +10,43 @@ namespace Thor.Tasks.Tests
 {
     public class GivenARedisTaskQueue
     {
+        private class TestDataHolder
+        {
+            public string Value { get; set; }
+
+            public override string ToString()
+            {
+                return Value;
+            }
+        }
+        
+        [Fact]
+        public void ItCapturesArgumentsPassedToEnqueuedDelegate()
+        {
+            var testFixture = new TaskQueueTestFixture(nameof(ItCapturesArgumentsPassedToEnqueuedDelegate));
+            
+
+            var values = new object[]
+            {
+                1,
+                "theboss",
+                new TestDataHolder {Value = "thebossss"},
+                false
+            };
+
+            foreach (var value in values)
+            {
+                var semaphoreFile = Path.GetTempFileName();
+                File.Delete(semaphoreFile);
+                
+                testFixture.TaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, value)); 
+                testFixture.TaskQueue.ExecuteNext();
+
+                File.ReadAllText(semaphoreFile).Should().Be(value.ToString());
+                File.Delete(semaphoreFile);
+            }
+        }
+        
         [Fact]
         public void ItEnqueuesAndReceivesDelegatesThatAreRunnable()
         {

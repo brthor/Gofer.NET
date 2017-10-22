@@ -63,5 +63,18 @@ namespace Thor.Tasks.Tests
                 locker.ReleaseWriterLock();
             }
         }
+        
+        public static void WriteSempaphoreValue(string semaphoreFile, object value)
+        {
+            try
+            {
+                locker.AcquireWriterLock(int.MaxValue); 
+                File.AppendAllText(semaphoreFile, value.ToString());
+            }
+            finally
+            {
+                locker.ReleaseWriterLock();
+            }
+        }
     }
 }
