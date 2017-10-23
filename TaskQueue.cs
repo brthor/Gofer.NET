@@ -76,7 +76,7 @@ namespace Thor.Tasks
         {
             TaskInfo taskInfo;
 
-            while ((taskInfo = JsonToTaskInfo(Backend.PeekBackup())).IsExpired(Config.MessageRetryTimeSpan))
+            while ((taskInfo = JsonToTaskInfo(Backend.PeekBackup()))?.IsExpired(Config.MessageRetryTimeSpan) ?? false)
             {
                 var lockKey = nameof(RestoreExpiredBackupTasks) + "::" + taskInfo.Id;
                 var backupLock = Backend.LockBlocking(lockKey);
