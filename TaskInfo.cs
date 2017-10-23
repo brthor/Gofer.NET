@@ -8,25 +8,24 @@ using Thor.Tasks.Errors;
 
 namespace Thor.Tasks
 {
-    [DataContract]
     public class TaskInfo
     {
-        [DataMember]
+        public string Id { get; set; }
+        
         public string AssemblyName { get; set; }
         
-        [DataMember]
         public string TypeName { get; set; }
         
-        [DataMember]
         public string MethodName { get; set; }
 
-        [DataMember]
         public object[] Args { get; set; }
+        
+        public DateTime CreatedAtUtc { get; set; }
 
-//        public object[] ArgsWithPatchedTypes()
-//        {
-//            return Args.Select(a => a is long ? Convert.ToInt32(a) : a).ToArray();
-//        }
+        public bool IsExpired(TimeSpan expirationSpan)
+        {
+            return CreatedAtUtc < (DateTime.UtcNow - expirationSpan);
+        }
 
         public void ExecuteTask()
         {

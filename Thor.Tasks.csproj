@@ -4,7 +4,6 @@
     <Version>1.0.0-beta-$(VersionSuffix)</Version>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Aq.ExpressionJsonSerializer" Version="0.18" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="StackExchange.Redis" Version="1.2.6" />
   </ItemGroup>

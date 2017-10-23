@@ -46,14 +46,58 @@ namespace Thor.Tasks
         
         public void ExecuteNext()
         {
-            var taskInfo = Dequeue();
+            var (taskJsonString, taskInfo) = SafeDequeue();
 
-            taskInfo?.ExecuteTask();
+            try
+            {
+                taskInfo?.ExecuteTask();
+            }
+            finally
+            {
+                Backend.RemoveBackup(taskJsonString);
+            }
         }
 
+        public Tuple<string, TaskInfo> SafeDequeue()
+        {
+            var jsonString = Backend.DequeueAndBackup();
+            var taskInfo = JsonToTaskInfo(jsonString);
+            return Tuple.Create(jsonString, taskInfo);
+        }
+        
         public TaskInfo Dequeue()
         {
             var jsonString = Backend.Dequeue();
+            var taskInfo = JsonToTaskInfo(jsonString);
+            return taskInfo;
+        }
+
+        public void RestoreExpiredBackupTasks()
+        {
+            TaskInfo taskInfo;
+
+            while ((taskInfo = JsonToTaskInfo(Backend.PeekBackup())).IsExpired(Config.MessageRetryTimeSpan))
+            {
+                var lockKey = nameof(RestoreExpiredBackupTasks) + "::" + taskInfo.Id;
+                var backupLock = Backend.LockBlocking(lockKey);
+
+                try
+                {
+                    var currentTop = JsonToTaskInfo(Backend.PeekBackup());
+                    if (currentTop.Id.Equals(taskInfo.Id))
+                    {
+                        Backend.RestoreTopBackup();
+                    }
+                }
+                finally
+                {
+                    backupLock.Release();
+                }
+            }
+        }
+
+        private TaskInfo JsonToTaskInfo(string jsonString)
+        {
             if (jsonString == null)
             {
                 return null;

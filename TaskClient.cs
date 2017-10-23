@@ -36,7 +36,7 @@ namespace Thor.Tasks
                 TaskScheduler.Tick();
                 
                 // Execute Any Queued Tasks
-                var info = TaskQueue.Dequeue();
+                var (json, info) = TaskQueue.SafeDequeue();
                 if (info != null)
                 {
                     LogTask(info);
@@ -49,8 +49,14 @@ namespace Thor.Tasks
                     {
                         LogTaskException(info, e);
                     }
-                    
+                    finally
+                    {
+                        TaskQueue.Backend.RemoveBackup(json);
+                    }
                 }
+                
+                // Restore any expired backup tasks
+                TaskQueue.RestoreExpiredBackupTasks();
                 
                 Thread.Sleep(PollDelay);
             }

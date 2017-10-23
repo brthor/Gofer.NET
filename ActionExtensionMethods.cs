@@ -35,7 +35,9 @@ namespace Thor.Tasks
                 AssemblyName = method.DeclaringType.Assembly.FullName,
                 TypeName = method.DeclaringType.FullName,
                 MethodName = method.Name,
-                Args = args
+                Args = args,
+                Id = Guid.NewGuid().ToString(),
+                CreatedAtUtc = DateTime.UtcNow
             };
             
             return taskInfo;

@@ -15,14 +15,40 @@ namespace Thor.Tasks
         
         public void Push(RedisKey stackName, RedisValue value)
         {
-            Retry.OnException(() => Redis.GetDatabase().ListRightPush(stackName, value),
+            Retry.OnException(() => Redis.GetDatabase().ListLeftPush(stackName, value),
                 new[] {typeof(RedisTimeoutException)});
         }
 
         public RedisValue Pop(RedisKey stackName)
         {
-            return Retry.OnException(() => Redis.GetDatabase().ListLeftPop(stackName),
+            return Retry.OnException(() => Redis.GetDatabase().ListRightPop(stackName),
                 new[] {typeof(RedisTimeoutException)});
+        }
+
+        public RedisValue PopPush(RedisKey popFromStackName, RedisKey pushToStackName)
+        {
+            return Retry.OnException(() => Redis.GetDatabase().ListRightPopLeftPush(popFromStackName, pushToStackName), 
+                new[] {typeof(RedisTimeoutException)});
+        }
+
+        public RedisValue Peek(RedisKey stackName)
+        {
+            return Retry.OnException(() => Redis.GetDatabase().ListGetByIndex(stackName, -1), 
+                new[] {typeof(RedisTimeoutException)});
+        }
+        
+        public RedisValue PeekTail(RedisKey stackName)
+        {
+            return Retry.OnException(() => Redis.GetDatabase().ListGetByIndex(stackName, 0), 
+                new[] {typeof(RedisTimeoutException)});
+        }
+
+        public bool Remove(RedisKey stackName, RedisValue value)
+        {
+            var removedCount = Retry.OnException(() => Redis.GetDatabase().ListRemove(stackName, value, -1), 
+                new[] {typeof(RedisTimeoutException)});
+
+            return Math.Abs(removedCount) == 1;
         }
 
         public async Task<RedisValue[]> PopAll(RedisKey stackName)
