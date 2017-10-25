@@ -1,7 +1,7 @@
 # Gofer.NET: Easy distributed tasks/jobs for .NET Core
 
-![Build Status](https://travis-ci.org/brthor/Thor.Tasks.svg?branch=master)
-![Myget Version Number](https://img.shields.io/myget/thor/v/Thor.Tasks.svg?color=green)
+![Build Status](https://travis-ci.org/brthor/Gofer.NET.svg?branch=master)
+![Myget Version Number](https://img.shields.io/myget/thor/v/Gofer.NET.svg?color=green)
 
 ## What is this?
 Run background jobs (one-off, or scheduled) on a worker pool easily. 
@@ -37,7 +37,7 @@ Currently requires a Redis backend to function, but other backends may be develo
 
 #### Install the dotnet cli
 We recommend using the dotnet cli, to get started, but it's not a necessity.
-Thor.Tasks is a `netstandard2.0` project, so you will need the 2.0.0 version of the dotnet cli.
+Gofer.NET is a `netstandard2.0` project, so you will need the 2.0.0 version of the dotnet cli.
 
 ```
 $ dotnet --version
@@ -55,14 +55,14 @@ Add the prerelease feed to your project. Your `NuGet.config` should look like th
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <add key="Thor.Tasks Prerelease" value="https://www.myget.org/F/thor/api/v3/index.json" />
+    <add key="Gofer.NET Prerelease" value="https://www.myget.org/F/thor/api/v3/index.json" />
   </packageSources>
 </configuration>
 ```
 
-Then add the Thor.Tasks package:
+Then add the Gofer.NET package:
 
-`dotnet package add Thor.Tasks`
+`dotnet package add Gofer.NET`
 
 #### Put it all together
 You can enqueue a function with any arguments that can be serialized. See examples below.
