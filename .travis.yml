@@ -7,6 +7,6 @@ services:
 script:
  - dotnet restore
  - dotnet build
- - cd Thor.Tasks.Tests && dotnet restore && dotnet test
+ - cd Gofer.NET.Tests && dotnet restore && dotnet test
  - cd .. && dotnet pack -c Release --version-suffix $(printf %05d $TRAVIS_BUILD_NUMBER)
- - dotnet nuget push ./bin/Release/Thor.Tasks.*.nupkg -s https://www.myget.org/F/thor/api/v2/package -k $MYGET_KEY
+ - dotnet nuget push ./bin/Release/Gofer.NET.*.nupkg -s https://www.myget.org/F/thor/api/v2/package -k $MYGET_KEY

@@ -28,8 +28,8 @@ namespace Gofer.NET
         {
             return new TaskQueueConfiguration
             {
-                QueueName = "Thor.Tasks.Default",
-                BackupQueueName = "Thor.Tasks.Backup.Default",
+                QueueName = "Gofer.NET.Default",
+                BackupQueueName = "Gofer.NET.Backup.Default",
                 ThreadSafe = true,
                 MessageRetryTimeSpan = TimeSpan.FromHours(1)
             };
