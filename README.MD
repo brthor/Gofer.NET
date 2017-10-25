@@ -1,11 +1,16 @@
-# Thor.Tasks: Easy distributed tasks/jobs for .NET Core
+# Gofer.NET: Easy distributed tasks/jobs for .NET Core
 
 ![Build Status](https://travis-ci.org/brthor/Thor.Tasks.svg?branch=master)
 ![Myget Version Number](https://img.shields.io/myget/thor/v/Thor.Tasks.svg?color=green)
 
 ## What is this?
-Inspired by celery for python, this is a distributed job runner for .NET Standard 2.0. 
-Run individual jobs or scheduled jobs on multiple machines.
+Run background jobs (one-off, or scheduled) on a worker pool easily. 
+
+ - Scale your worker pool by simply adding new nodes. 
+ - Tasks are processed at least once, and not lost if a worker dies.
+ - Supports Redis backend, with an extensible API for developing additional backends.
+
+Inspired by celery for python, this is a distributed job runner for .NET Standard 2.0 Applications. Currently only tested using .NET Core 2.0.
 
 Here's a quick example using the same machine to execute jobs:
 ```c#
