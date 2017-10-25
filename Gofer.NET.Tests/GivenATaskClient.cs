@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Thor.Tasks.Tests
+namespace Gofer.NET.Tests
 {
     public class GivenATaskClient
     {

@@ -3,7 +3,7 @@ using System.IO;
 using System.Threading;
 using FluentAssertions;
 
-namespace Thor.Tasks.Tests
+namespace Gofer.NET.Tests
 {
     public class TaskQueueTestFixture
     {

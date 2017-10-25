@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq.Expressions;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public partial class TaskQueue
     {

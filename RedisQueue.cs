@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
 using StackExchange.Redis;
+using Gofer.NET;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public class RedisQueue
     {

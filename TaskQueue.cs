@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Threading;
 using Newtonsoft.Json;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public partial class TaskQueue
     {
@@ -30,7 +30,7 @@ namespace Thor.Tasks
             var taskInfo = expression.ToTaskInfo();
             Enqueue(taskInfo);
         }
-
+        
         private void Enqueue(TaskInfo taskInfo)
         {
             var settings = new JsonSerializerSettings

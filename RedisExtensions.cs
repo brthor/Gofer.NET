@@ -1,7 +1,7 @@
 ﻿using System;
 using StackExchange.Redis;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public static class RedisExtensions
     {

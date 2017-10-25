@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public class TaskQueueConfiguration
     {

@@ -3,10 +3,10 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.Serialization;
+using Gofer.NET.Errors;
 using StackExchange.Redis;
-using Thor.Tasks.Errors;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public class TaskInfo
     {

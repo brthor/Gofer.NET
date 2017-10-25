@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public class JsonPrimitiveConverter : JsonConverter
     {

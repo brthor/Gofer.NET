@@ -1,4 +1,4 @@
-﻿namespace Thor.Tasks.Errors
+﻿namespace Gofer.NET.Errors
 {
     public interface IHelpfulException
     {

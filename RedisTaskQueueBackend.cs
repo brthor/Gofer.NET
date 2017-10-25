@@ -1,7 +1,8 @@
 ﻿using System.Collections;
+using Gofer.NET;
 using StackExchange.Redis;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public class RedisTaskQueueBackend : ITaskQueueBackend
     {

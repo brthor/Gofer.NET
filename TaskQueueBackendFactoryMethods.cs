@@ -1,6 +1,6 @@
 ﻿using StackExchange.Redis;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public partial class TaskQueue
     {

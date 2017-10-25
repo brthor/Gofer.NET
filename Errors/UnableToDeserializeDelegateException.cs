@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Thor.Tasks.Errors
+namespace Gofer.NET.Errors
 {
     public class UnableToDeserializeDelegateException : Exception, IHelpfulException
     {

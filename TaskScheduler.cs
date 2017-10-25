@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     // TODO: Distributed Task Scheduler, this assumes a single client
     public class TaskScheduler

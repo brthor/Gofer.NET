@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public class TaskClient
     {

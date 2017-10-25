@@ -1,4 +1,4 @@
-﻿namespace Thor.Tasks
+﻿namespace Gofer.NET
 {
     public interface IBackendLock
     {

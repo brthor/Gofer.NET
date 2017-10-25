@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Xunit;
 
-namespace Thor.Tasks.Tests
+namespace Gofer.NET.Tests
 {
     public class GivenARedisTaskQueue
     {

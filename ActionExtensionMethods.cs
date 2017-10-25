@@ -3,7 +3,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Thor.Tasks
+namespace Gofer.NET
 {
     public static class ActionExtensionMethods
     {
