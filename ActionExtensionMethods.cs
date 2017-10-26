@@ -9,7 +9,7 @@ namespace Gofer.NET
     {
         public static TaskInfo ToTaskInfo(this Expression<Action> expression)
         {
-            var methodCallArgumentResolutionVisitor = new TaskQueue.MethodCallArgumentResolutionVisitor();
+            var methodCallArgumentResolutionVisitor = new MethodCallArgumentResolutionVisitor();
             var expressionWithArgumentsResolved =
                 (Expression<Action>) methodCallArgumentResolutionVisitor.Visit(expression);
 
