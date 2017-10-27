@@ -51,19 +51,10 @@ Getting started is easy. First create a new project:
 `dotnet new console`
 
 #### Add our NuGet Package to your project
-Add the prerelease feed to your project. Your `NuGet.config` should look like this:
-```
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <add key="Gofer.NET Prerelease" value="https://www.myget.org/F/thor/api/v3/index.json" />
-  </packageSources>
-</configuration>
-```
 
-Then add the Gofer.NET package:
+Add the Gofer.NET package:
 
-`dotnet package add Gofer.NET`
+`dotnet add package Gofer.NET --source https://www.myget.org/F/thor/api/v3/index.json`
 
 #### Put it all together
 You can enqueue a function with any arguments that can be serialized. See examples below.
