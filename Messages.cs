@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Gofer.NET.Errors
+namespace Gofer.NET
 {
     public static class Messages
     {

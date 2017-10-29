@@ -1,10 +1,10 @@
 ﻿using System;
 
-namespace Gofer.NET.Errors
+namespace Gofer.NET
 {
     public static class Trace
     {
-        private static object _locker = new object();
+        private static readonly object _locker = new object();
         
         public static void Exception(string message, Exception exception)
         {
