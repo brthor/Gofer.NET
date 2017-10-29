@@ -1,6 +1,8 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using Gofer.NET.Errors;
 using Newtonsoft.Json;
 
 namespace Gofer.NET
@@ -39,11 +41,16 @@ namespace Gofer.NET
                 var (json, info) = TaskQueue.SafeDequeue();
                 if (info != null)
                 {
-                    LogTask(info);
+                    LogTaskStarted(info);
 
                     try
                     {
+                        var now = DateTime.Now;
+                        
                         info.ExecuteTask();
+                        
+                        var completionSeconds = (DateTime.Now - now).TotalSeconds;
+                        LogTaskFinished(info, completionSeconds);
                     }
                     catch (Exception e)
                     {
@@ -64,17 +71,20 @@ namespace Gofer.NET
 
         private void LogTaskException(TaskInfo info, Exception exception)
         {
-            var logMessage = $"Task Failed: {info.AssemblyName}.{info.MethodName} \n" +
-                             $"Error: {exception.Message}";
-            
-            Console.WriteLine(logMessage);
+            var logMessage = Messages.TaskThrewException(info);
+            Trace.Exception(logMessage, exception);
         }
 
-        private void LogTask(TaskInfo info)
+        private void LogTaskStarted(TaskInfo info)
         {
-            var logMessage = $"Task Received: {info.AssemblyName}.{info.MethodName}";
-                
-            Console.WriteLine(logMessage);
+            var logMessage = Messages.TaskStarted(info);
+            Trace.Info(logMessage);
+        }
+        
+        private void LogTaskFinished(TaskInfo info, double completionSeconds)
+        {
+            var logMessage = Messages.TaskFinished(info, completionSeconds);
+            Trace.Info(logMessage);
         }
 
         public void CancelListen()
