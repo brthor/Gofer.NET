@@ -6,7 +6,6 @@ using StackExchange.Redis;
 
 namespace Gofer.NET
 {
-    // TODO: Distributed Task Scheduler, this assumes a single client
     public class TaskScheduler
     {
         private class TaskSchedule
@@ -99,7 +98,6 @@ namespace Gofer.NET
         
         internal void AddScheduledTask(TaskInfo taskInfo, TimeSpan interval, string taskName)
         {
-            // TODO: Support Scheduled Tasks with args
             _scheduledTasks[taskName] = new TaskSchedule(taskInfo, interval, _taskQueue.Backend);
         }
 
