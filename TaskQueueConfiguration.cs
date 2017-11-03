@@ -24,6 +24,8 @@ namespace Gofer.NET
         /// </summary>
         public bool ThreadSafe { get; set; }
         
+        public ITaskInfoSerializer TaskInfoSerializer { get; set; }
+        
         public static TaskQueueConfiguration Default()
         {
             return new TaskQueueConfiguration
@@ -31,7 +33,8 @@ namespace Gofer.NET
                 QueueName = "Gofer.NET.Default",
                 BackupQueueName = "Gofer.NET.Backup.Default",
                 ThreadSafe = true,
-                MessageRetryTimeSpan = TimeSpan.FromHours(1)
+                MessageRetryTimeSpan = TimeSpan.FromHours(1),
+                TaskInfoSerializer = new JsonTaskInfoSerializer()
             };
         }
     }
