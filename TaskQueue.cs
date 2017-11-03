@@ -15,7 +15,7 @@ namespace Gofer.NET
         public TaskQueue(ITaskQueueBackend backend, TaskQueueConfiguration config=null)
         {
             Backend = backend;
-            Config = config ?? new TaskQueueConfiguration();
+            Config = config ?? TaskQueueConfiguration.Default();
 
             // Usage of the Task Queue in Parallel Threads, requires the thread pool size to be increased.
             // https://stackexchange.github.io/StackExchange.Redis/Timeouts#are-you-seeing-high-number-of-busyio-or-busyworker-threads-in-the-timeout-exception
