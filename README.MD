@@ -1,8 +1,8 @@
 # Gofer.NET: Easy distributed tasks/jobs for .NET Core
 
-[![Join the chat at https://gitter.im/Gofer-NET/Lobby](https://badges.gitter.im/Gofer-NET/Lobby.svg)](https://gitter.im/Gofer-NET/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/brthor/Gofer.NET.svg?branch=master)](https://travis-ci.org/brthor/Gofer.NET)
-[![Myget Version Number](https://img.shields.io/myget/thor/v/Gofer.NET.svg?color=green)](https://www.myget.org/feed/thor/package/nuget/Gofer.NET)
+[![Myget Version Number](https://img.shields.io/nuget/v/Gofer.NET.svg)](https://www.nuget.org/packages/Gofer.NET)
+[![Join the chat at https://gitter.im/Gofer-NET/Lobby](https://badges.gitter.im/Gofer-NET/Lobby.svg)](https://gitter.im/Gofer-NET/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## What is this?
 Run background jobs (one-off, or scheduled) on a worker pool easily. 
