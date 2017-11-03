@@ -10,3 +10,6 @@ script:
  - (cd Gofer.NET.Tests && dotnet restore && dotnet test)
 after_success:
  - bash publish.sh
+cache:
+  directories:
+  - $HOME/.nuget
