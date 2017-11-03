@@ -73,7 +73,7 @@ namespace Gofer.NET
             while (true)
             {
                 taskInfo = Config.TaskInfoSerializer.Deserialize(Backend.PeekBackup());
-                if (taskInfo?.IsExpired(Config.MessageRetryTimeSpan) ?? false)
+                if (taskInfo?.IsExpired(Config.MessageRetryTimeSpan) ?? true)
                 {
                     break;
                 }
