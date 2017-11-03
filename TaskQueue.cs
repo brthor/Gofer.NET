@@ -83,10 +83,14 @@ namespace Gofer.NET
 
                 try
                 {
-                    var currentTop = Config.TaskInfoSerializer.Deserialize(Backend.PeekBackup());
-                    if (currentTop.Id.Equals(taskInfo.Id))
+                    var currentTopStr = Backend.PeekBackup();
+                    if (currentTopStr != null)
                     {
-                        Backend.RestoreTopBackup();
+                        var currentTop = Config.TaskInfoSerializer.Deserialize(currentTopStr);
+                        if (currentTop?.Id.Equals(taskInfo.Id) ?? false)
+                        {
+                            Backend.RestoreTopBackup();
+                        }
                     }
                 }
                 finally
