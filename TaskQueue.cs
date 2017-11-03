@@ -84,7 +84,7 @@ namespace Gofer.NET
                 try
                 {
                     var currentTopStr = Backend.PeekBackup();
-                    if (currentTopStr != null)
+                    if (!string.IsNullOrEmpty(currentTopStr))
                     {
                         var currentTop = Config.TaskInfoSerializer.Deserialize(currentTopStr);
                         if (currentTop?.Id.Equals(taskInfo.Id) ?? false)
