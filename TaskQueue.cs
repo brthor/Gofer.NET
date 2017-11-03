@@ -15,7 +15,7 @@ namespace Gofer.NET
         public TaskQueue(ITaskQueueBackend backend, TaskQueueConfiguration config=null)
         {
             Backend = backend;
-            Config = config ?? new TaskQueueConfiguration();
+            Config = config ?? TaskQueueConfiguration.Default();
 
             // Usage of the Task Queue in Parallel Threads, requires the thread pool size to be increased.
             // https://stackexchange.github.io/StackExchange.Redis/Timeouts#are-you-seeing-high-number-of-busyio-or-busyworker-threads-in-the-timeout-exception
@@ -33,13 +33,7 @@ namespace Gofer.NET
         
         private void Enqueue(TaskInfo taskInfo)
         {
-            var settings = new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.All
-            };
-            settings.Converters.Insert(0, new JsonPrimitiveConverter());
-            
-            var jsonString = JsonConvert.SerializeObject(taskInfo, settings);
+            var jsonString = Config.TaskInfoSerializer.Serialize(taskInfo);
 
             Backend.Enqueue(jsonString);
         }
@@ -61,14 +55,14 @@ namespace Gofer.NET
         public Tuple<string, TaskInfo> SafeDequeue()
         {
             var jsonString = Backend.DequeueAndBackup();
-            var taskInfo = JsonToTaskInfo(jsonString);
+            var taskInfo = Config.TaskInfoSerializer.Deserialize(jsonString);
             return Tuple.Create(jsonString, taskInfo);
         }
         
         public TaskInfo Dequeue()
         {
             var jsonString = Backend.Dequeue();
-            var taskInfo = JsonToTaskInfo(jsonString);
+            var taskInfo = Config.TaskInfoSerializer.Deserialize(jsonString);
             return taskInfo;
         }
 
@@ -76,14 +70,20 @@ namespace Gofer.NET
         {
             TaskInfo taskInfo;
 
-            while ((taskInfo = JsonToTaskInfo(Backend.PeekBackup()))?.IsExpired(Config.MessageRetryTimeSpan) ?? false)
+            while (true)
             {
+                taskInfo = Config.TaskInfoSerializer.Deserialize(Backend.PeekBackup());
+                if (taskInfo?.IsExpired(Config.MessageRetryTimeSpan) ?? true)
+                {
+                    break;
+                }
+                
                 var lockKey = nameof(RestoreExpiredBackupTasks) + "::" + taskInfo.Id;
                 var backupLock = Backend.LockBlocking(lockKey);
 
                 try
                 {
-                    var currentTop = JsonToTaskInfo(Backend.PeekBackup());
+                    var currentTop = Config.TaskInfoSerializer.Deserialize(Backend.PeekBackup());
                     if (currentTop.Id.Equals(taskInfo.Id))
                     {
                         Backend.RestoreTopBackup();
@@ -94,23 +94,6 @@ namespace Gofer.NET
                     backupLock.Release();
                 }
             }
-        }
-
-        private TaskInfo JsonToTaskInfo(string jsonString)
-        {
-            if (jsonString == null)
-            {
-                return null;
-            }
-            
-            var settings = new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.All
-            };
-            settings.Converters.Insert(0, new JsonPrimitiveConverter());
-
-            var taskInfo = JsonConvert.DeserializeObject<TaskInfo>(jsonString, settings);
-            return taskInfo;
         }
     }
 }
