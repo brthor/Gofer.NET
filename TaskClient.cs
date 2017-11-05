@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Gofer.NET.Errors;
+using Gofer.NET.Utils;
 using Newtonsoft.Json;
 
 namespace Gofer.NET

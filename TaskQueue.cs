@@ -3,6 +3,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
+using Gofer.NET.Utils;
 using Newtonsoft.Json;
 
 namespace Gofer.NET

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq.Expressions;
 
-namespace Gofer.NET
+namespace Gofer.NET.Utils
 {
     public class MethodCallArgumentResolutionVisitor : ExpressionVisitor
     {

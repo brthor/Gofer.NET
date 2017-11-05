@@ -1,4 +1,4 @@
-﻿namespace Gofer.NET
+﻿namespace Gofer.NET.Utils
 {
     public interface ITaskInfoSerializer
     {
