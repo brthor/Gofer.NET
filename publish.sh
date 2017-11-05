@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ev
 
-package_name="Gofer.NET"
+package_name="$1"
 
 if [ "${TRAVIS_PULL_REQUEST}" = "false" ] && [ "$TRAVIS_BRANCH" = "master" ]; then
     echo "Publishing ${package_name} $(printf %05d $TRAVIS_BUILD_NUMBER)"
