@@ -5,12 +5,11 @@ dist: trusty
 services:
   - redis-server
 script:
- - dotnet restore
  - dotnet build
- - (cd Gofer.NET.Tests && dotnet restore && dotnet test)
+ - (cd Gofer.NET.Tests && dotnet test)
 after_success:
  - bash publish.sh Gofer.NET
- - cd Gofer.NET.Utils && bash ../publish.sh Gofer.NET.Utils
+ - (cd Gofer.NET.Utils && bash ../publish.sh Gofer.NET.Utils)
 cache:
   directories:
   - $HOME/.nuget
