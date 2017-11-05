@@ -1,6 +1,7 @@
 ﻿using System;
+using Gofer.NET.Errors;
 
-namespace Gofer.NET.Errors
+namespace Gofer.NET.Utils.Errors
 {
     public class UnableToDeserializeDelegateException : Exception, IHelpfulException
     {

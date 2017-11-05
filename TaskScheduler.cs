@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using Gofer.NET.Utils;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 

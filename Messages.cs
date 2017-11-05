@@ -1,4 +1,5 @@
 ﻿using System;
+using Gofer.NET.Utils;
 
 namespace Gofer.NET
 {

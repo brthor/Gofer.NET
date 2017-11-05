@@ -8,12 +8,17 @@
     <PackageReference Include="StackExchange.Redis" Version="1.2.6" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Remove="Gofer.NET.Tests\**" />
-  </ItemGroup>
+    <ProjectReference Include="..\Gofer.NET.Utils\Gofer.NET.Utils.csproj" />
+  </ItemGroup>=
   <ItemGroup>
+    <EmbeddedResource Remove="Gofer.NET.Utils\**" />
     <EmbeddedResource Remove="Gofer.NET.Tests\**" />
-  </ItemGroup>
-  <ItemGroup>
+    <None Remove="Gofer.NET.Utils\**" />
     <None Remove="Gofer.NET.Tests\**" />
+    
+    <Compile Remove="Gofer.NET.Utils\**" />
+    <Compile Include="Gofer.NET.Utils\**\*.cs" />
+
+    <Compile Remove="Gofer.NET.Tests\**" />
   </ItemGroup>
 </Project>

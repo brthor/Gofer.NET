@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.Serialization;
-using Gofer.NET.Errors;
-using StackExchange.Redis;
+using Gofer.NET.Utils.Errors;
 
-namespace Gofer.NET
+namespace Gofer.NET.Utils
 {
     public class TaskInfo
     {
@@ -19,6 +15,8 @@ namespace Gofer.NET
         public string MethodName { get; set; }
 
         public object[] Args { get; set; }
+        
+        public Type ReturnType { get; set; }
         
         public DateTime CreatedAtUtc { get; set; }
 
