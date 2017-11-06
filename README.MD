@@ -54,7 +54,7 @@ Getting started is easy. First create a new project:
 
 Add the Gofer.NET package:
 
-`dotnet add package Gofer.NET --source https://www.myget.org/F/thor/api/v3/index.json --version 1.0.0-*`
+`dotnet add package Gofer.NET --version 1.0.0-*`
 
 #### Put it all together
 You can enqueue a function with any arguments that can be serialized. See examples below.
