@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Runtime.Serialization;
 using Gofer.NET.Utils.Errors;
 
 namespace Gofer.NET.Utils
@@ -25,7 +26,7 @@ namespace Gofer.NET.Utils
             return CreatedAtUtc < (DateTime.UtcNow - expirationSpan);
         }
 
-        public void ExecuteTask()
+        public object ExecuteTask()
         {
             var assembly = Assembly.Load(AssemblyName);
             var type = assembly.GetType(TypeName);
@@ -35,8 +36,7 @@ namespace Gofer.NET.Utils
 
             if (staticMethod != null)
             {
-                staticMethod.Invoke(null, Args);
-                return;
+                return staticMethod.Invoke(null, Args);
             }
             
             var instanceMethod = type.GetMethod(MethodName, 
@@ -49,7 +49,7 @@ namespace Gofer.NET.Utils
 
             var instance = Activator.CreateInstance(type);
             
-            instanceMethod.Invoke(instance, Args);
+            return instanceMethod.Invoke(instance, Args);
         }
     }
 }
