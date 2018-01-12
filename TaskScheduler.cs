@@ -1,87 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using Gofer.NET.Utils;
-using Newtonsoft.Json;
 using StackExchange.Redis;
 
 namespace Gofer.NET
 {
     public class TaskScheduler
     {
-        private class TaskSchedule
-        {
-            private readonly ITaskQueueBackend _backend;
-            private DateTime StartTime { get; }
-            
-            private TaskInfo TaskInfo { get; set; }
-            
-            private TimeSpan Interval { get; set; }
-
-            public TaskSchedule(
-                TaskInfo taskInfo, 
-                TimeSpan interval,
-                ITaskQueueBackend backend)
-            {
-                _backend = backend;
-                TaskInfo = taskInfo;
-                Interval = interval;
-                StartTime = DateTime.Now;
-            }
-
-            public void RunIfIntervalReachedSinceLastRun(string taskId)
-            {
-                var lockKey = $"{nameof(TaskSchedule)}::{taskId}::ScheduleLock";
-                var lastRunValueKey = $"{nameof(TaskSchedule)}::{taskId}::LastRunValue";
-                
-                var backendLock = _backend.LockBlocking(lockKey);
-                try
-                {
-                    var lastRunTime = GetLastRunTime(lastRunValueKey); 
-
-                    var difference = DateTime.Now - lastRunTime;
-                    if (difference > Interval)
-                    {
-                        SetLastRunTime(lastRunValueKey);
-                        LogScheduledTaskRun();
-                    
-                        TaskInfo.ExecuteTask();
-                    }
-                }
-                finally
-                {
-                    backendLock.Release();
-                }
-            }
-
-            /// <summary>
-            /// Not Thread safe. Use External locking.
-            /// </summary>
-            private DateTime GetLastRunTime(string lastRunValueKey)
-            {
-                var jsonString = _backend.GetString(lastRunValueKey);
-
-                if (string.IsNullOrEmpty(jsonString))
-                {
-                    return StartTime;
-                }
-
-                return JsonConvert.DeserializeObject<DateTime>(jsonString);
-            }
-            
-            /// <summary>
-            /// Not thread safe. Use external locking.
-            /// </summary>
-            private void SetLastRunTime(string lastRunValueKey)
-            {
-                _backend.SetString(lastRunValueKey, JsonConvert.SerializeObject(DateTime.Now));
-            }
-
-            private void LogScheduledTaskRun()
-            {
-                Console.WriteLine($"Running Scheduled Task with interval: {Interval.ToString()}");
-            }
-        }
+        private string ScheduleBackupKey => $"{nameof(TaskSchedule)}::ScheduleBackupList";
 
         private readonly TaskQueue _taskQueue;
         private readonly Dictionary<string, TaskSchedule> _scheduledTasks;
@@ -90,25 +18,83 @@ namespace Gofer.NET
         {
             _taskQueue = taskQueue;
             _scheduledTasks = new Dictionary<string, TaskSchedule>();
-        }
-        
-        public void AddScheduledTask(Expression<Action> action, TimeSpan interval, string taskName)
-        {
-            AddScheduledTask(action.ToTaskInfo(), interval, taskName);
-        }
-        
-        internal void AddScheduledTask(TaskInfo taskInfo, TimeSpan interval, string taskName)
-        {
-            _scheduledTasks[taskName] = new TaskSchedule(taskInfo, interval, _taskQueue.Backend);
+
+            RestoreScheduledTasksFromStorage();
         }
 
         public void Tick()
         {
-            foreach (var taskKvp in _scheduledTasks)
+            foreach (var task in _scheduledTasks.Values)
             {
-                var taskId = taskKvp.Key;
-                var task = taskKvp.Value;
-                task.RunIfIntervalReachedSinceLastRun(taskId);
+                var taskDidRun = task.RunIfScheduleReached();
+
+                if (taskDidRun && !task.IsRecurring)
+                {
+                    RemoveTaskFromSchedule(task);
+                }
+            }
+        }
+
+        public void AddScheduledTask(Expression<Action> action, TimeSpan offsetFromNow, string taskName)
+        {
+            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), offsetFromNow, _taskQueue.Backend, false, taskName));
+        }
+
+        public void AddScheduledTask(Expression<Action> action, DateTimeOffset offsetFromNow, string taskName)
+        {
+            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), offsetFromNow, _taskQueue.Backend, false, taskName));
+        }
+
+        public void AddScheduledTask(Expression<Action> action, DateTime scheduledTime, string taskName)
+        {
+            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), scheduledTime, _taskQueue.Backend, false, taskName));
+        }
+
+        public void AddRecurringTask(Expression<Action> action, TimeSpan interval, string taskName)
+        {
+            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), interval, _taskQueue.Backend, true, taskName));
+        }
+
+        public void AddRecurringTask(Expression<Action> action, string crontab, string taskName)
+        {
+            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), crontab, _taskQueue.Backend, taskName));
+        }
+
+        public void RemoveScheduledTask(string taskName)
+        {
+            if (!_scheduledTasks.ContainsKey(taskName))
+            {
+                throw new ArgumentException($"Scheduled or Recurring Task not found: {taskName}");
+            }
+
+            RemoveTaskFromSchedule(_scheduledTasks[taskName]);
+        }
+
+        private void AddTaskToSchedule(TaskSchedule taskSchedule)
+        {
+            _scheduledTasks[taskSchedule.TaskKey] = taskSchedule;
+
+            var jsonTaskSchedule = new JsonTaskInfoSerializer().Serialize(taskSchedule);
+            _taskQueue.Backend.AddToList(ScheduleBackupKey, jsonTaskSchedule);
+        }
+
+        private void RemoveTaskFromSchedule(TaskSchedule taskSchedule)
+        {
+            var jsonTaskSchedule = new JsonTaskInfoSerializer().Serialize(taskSchedule);
+            _taskQueue.Backend.RemoveFromList(ScheduleBackupKey, jsonTaskSchedule);
+
+            _scheduledTasks.Remove(taskSchedule.TaskKey);
+        }
+
+        private void RestoreScheduledTasksFromStorage()
+        {
+            var serializer = new JsonTaskInfoSerializer();
+            var scheduledTasks = _taskQueue.Backend.GetList(ScheduleBackupKey)
+                .Select(s => serializer.Deserialize<TaskSchedule>(s)).ToList();
+
+            foreach (var scheduledTask in scheduledTasks)
+            {
+                _scheduledTasks[scheduledTask.TaskKey] = scheduledTask;
             }
         }
     }
