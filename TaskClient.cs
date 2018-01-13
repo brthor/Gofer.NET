@@ -19,10 +19,10 @@ namespace Gofer.NET
         public TaskQueue TaskQueue { get; }
         public TaskScheduler TaskScheduler { get; }
 
-        public TaskClient(TaskQueue taskQueue)
+        public TaskClient(TaskQueue taskQueue, bool restoreScheduleFromBackup=true)
         {
             TaskQueue = taskQueue;
-            TaskScheduler = new TaskScheduler(TaskQueue);
+            TaskScheduler = new TaskScheduler(TaskQueue, restoreFromBackup: restoreScheduleFromBackup);
             IsCanceled = false;
         }
 

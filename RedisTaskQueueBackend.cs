@@ -87,5 +87,10 @@ namespace Gofer.NET
         {
             return Redis.GetDatabase().ListRange(key).Select(v => (string)v);
         }
+
+        public void DeleteKey(string scheduleBackupKey)
+        {
+            Redis.GetDatabase().KeyDelete(scheduleBackupKey);
+        }
     }
 }

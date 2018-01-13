@@ -14,17 +14,21 @@ namespace Gofer.NET
         private readonly TaskQueue _taskQueue;
         private readonly Dictionary<string, TaskSchedule> _scheduledTasks;
 
-        public TaskScheduler(TaskQueue taskQueue)
+        public TaskScheduler(TaskQueue taskQueue, bool restoreFromBackup=true)
         {
             _taskQueue = taskQueue;
             _scheduledTasks = new Dictionary<string, TaskSchedule>();
 
-            RestoreScheduledTasksFromStorage();
+            if (restoreFromBackup)
+            {
+                RestoreScheduledTasksFromStorage();
+            }
         }
 
         public void Tick()
         {
-            foreach (var task in _scheduledTasks.Values)
+            var tasks = _scheduledTasks.Values.ToList();
+            foreach (var task in tasks)
             {
                 var taskDidRun = task.RunIfScheduleReached();
 
@@ -73,6 +77,7 @@ namespace Gofer.NET
         private void AddTaskToSchedule(TaskSchedule taskSchedule)
         {
             _scheduledTasks[taskSchedule.TaskKey] = taskSchedule;
+            taskSchedule.ClearLastRunTime();
 
             var jsonTaskSchedule = new JsonTaskInfoSerializer().Serialize(taskSchedule);
             _taskQueue.Backend.AddToList(ScheduleBackupKey, jsonTaskSchedule);
@@ -96,6 +101,11 @@ namespace Gofer.NET
             {
                 _scheduledTasks[scheduledTask.TaskKey] = scheduledTask;
             }
+        }
+
+        public void FlushBackupStorage()
+        {
+            _taskQueue.Backend.DeleteKey(ScheduleBackupKey);
         }
     }
 }

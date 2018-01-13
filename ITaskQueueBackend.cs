@@ -21,5 +21,6 @@ namespace Gofer.NET
         long RemoveFromList(string key, string value);
 
         IEnumerable<string> GetList(string key);
+        void DeleteKey(string scheduleBackupKey);
     }
 }

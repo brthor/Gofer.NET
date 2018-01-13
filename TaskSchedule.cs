@@ -18,9 +18,11 @@ namespace Gofer.NET
         private readonly TaskInfo _taskInfo;
         private readonly ITaskQueueBackend _backend;
         private readonly TimeSpan? _intervalOrOffsetFromNow;
-        private readonly DateTimeOffset? _offsetFromNow;
+        private readonly DateTimeOffset? _scheduledTimeAsDateTimeOffset;
         private readonly DateTime? _scheduledTime;
         private readonly string _crontab;
+
+        public TaskSchedule() { }
 
         public TaskSchedule(
             TaskInfo taskInfo,
@@ -33,11 +35,11 @@ namespace Gofer.NET
 
         public TaskSchedule(
             TaskInfo taskInfo,
-            DateTimeOffset offsetFromNow,
+            DateTimeOffset scheduledTimeAsDateTimeOffset,
             ITaskQueueBackend backend,
             bool isRecurring, string taskId) : this(taskInfo, backend, isRecurring, taskId)
         {
-            _offsetFromNow = offsetFromNow;
+            _scheduledTimeAsDateTimeOffset = scheduledTimeAsDateTimeOffset;
         }
 
         public TaskSchedule(
@@ -78,7 +80,13 @@ namespace Gofer.NET
             {
                 var lastRunTime = GetLastRunTime(LastRunValueKey);
 
-                if (TaskShouldExecuteBasedOnSchedule(lastRunTime))
+                // If we've already run before, and aren't recurring, dont run again.
+                if (lastRunTime.HasValue && !IsRecurring)
+                {
+                    return true;
+                }
+
+                if (TaskShouldExecuteBasedOnSchedule(lastRunTime ?? _startTime))
                 {
                     SetLastRunTime();
                     LogScheduledTaskRun();
@@ -104,11 +112,11 @@ namespace Gofer.NET
                 return difference >= _intervalOrOffsetFromNow;
             }
 
-            if (_offsetFromNow.HasValue)
+            if (_scheduledTimeAsDateTimeOffset.HasValue)
             {
-                var difference = DateTime.UtcNow - lastRunTime;
+                var utcScheduledTime = _scheduledTimeAsDateTimeOffset.Value.ToUniversalTime();
 
-                return difference >= _intervalOrOffsetFromNow;
+                return DateTime.UtcNow >= utcScheduledTime;
             }
 
             if (_scheduledTime.HasValue)
@@ -133,13 +141,13 @@ namespace Gofer.NET
         /// <summary>
         /// Not Thread safe. Use External locking.
         /// </summary>
-        private DateTime GetLastRunTime(string lastRunValueKey)
+        private DateTime? GetLastRunTime(string lastRunValueKey)
         {
             var jsonString = _backend.GetString(lastRunValueKey);
 
             if (string.IsNullOrEmpty(jsonString))
             {
-                return _startTime;
+                return null;
             }
 
             return JsonConvert.DeserializeObject<DateTime>(jsonString);
@@ -156,7 +164,7 @@ namespace Gofer.NET
         private void LogScheduledTaskRun()
         {
             var intervalString = _intervalOrOffsetFromNow?.ToString() ??
-                                 _offsetFromNow?.ToString() ?? _scheduledTime?.ToString() ?? _crontab;
+                                 _scheduledTimeAsDateTimeOffset?.ToString() ?? _scheduledTime?.ToString() ?? _crontab;
 
             Console.WriteLine($"Running Scheduled Task with interval: {intervalString}");
         }
@@ -172,6 +180,14 @@ namespace Gofer.NET
             {
                 throw new Exception("Crontab is invalid. See the inner exception for details.", ex);
             }
+        }
+
+        /// <summary>
+        /// Used to prevent overlap between tasks added at different times but sharing a name.
+        /// </summary>
+        public void ClearLastRunTime()
+        {
+            _backend.DeleteKey(LastRunValueKey);
         }
     }
 }
