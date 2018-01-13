@@ -128,9 +128,9 @@ namespace Gofer.NET
 
             if (_crontab != null)
             {
-                var crontabSchedule = CrontabSchedule.Parse(_crontab);
+                var crontabSchedule = CrontabSchedule.Parse(_crontab, new CrontabSchedule.ParseOptions() { IncludingSeconds = true });
 
-                var nextOccurence = crontabSchedule.GetNextOccurrence(lastRunTime).ToUniversalTime();
+                var nextOccurence = crontabSchedule.GetNextOccurrence(lastRunTime);
                 return DateTime.UtcNow >= nextOccurence;
             }
 
@@ -173,7 +173,7 @@ namespace Gofer.NET
         {
             try
             {
-                var schedule = CrontabSchedule.Parse(crontab);
+                var schedule = CrontabSchedule.Parse(crontab, new CrontabSchedule.ParseOptions(){IncludingSeconds = true});
                 schedule.GetNextOccurrence(DateTime.UtcNow);
             }
             catch (Exception ex)

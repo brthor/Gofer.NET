@@ -118,6 +118,18 @@ namespace Gofer.NET.Tests
             AssertTaskSchedulerWritesSemaphoreTwice(configureSchedulerAction);
         }
 
+        [Fact]
+        public void ItExecutesARecurringTaskAtTheSpecifiedCrontabInterval()
+        {
+            Action<string, TaskScheduler> configureSchedulerAction = (semaphoreFile, taskScheduler) =>
+            {
+                taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSempaphore(semaphoreFile),
+                    $"*/{IntervalSeconds} * * * * *", RandomTaskName);
+            };
+
+            AssertTaskSchedulerWritesSemaphoreTwice(configureSchedulerAction);
+        }
+
         [Theory]
         [InlineData("scheduled")]
         [InlineData("recurring")]
