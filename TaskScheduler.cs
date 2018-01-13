@@ -14,7 +14,7 @@ namespace Gofer.NET
         private readonly TaskQueue _taskQueue;
         private readonly Dictionary<string, TaskSchedule> _scheduledTasks;
 
-        public TaskScheduler(TaskQueue taskQueue, bool restoreFromBackup=true)
+        public TaskScheduler(TaskQueue taskQueue, bool restoreFromBackup=false)
         {
             _taskQueue = taskQueue;
             _scheduledTasks = new Dictionary<string, TaskSchedule>();
