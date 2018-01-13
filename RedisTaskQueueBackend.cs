@@ -1,4 +1,6 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using Gofer.NET;
 using StackExchange.Redis;
 
@@ -69,6 +71,26 @@ namespace Gofer.NET
         public string GetString(string key)
         {
             return Redis.GetDatabase().StringGet(key);
+        }
+
+        public long AddToList(string key, string value)
+        {
+            return Redis.GetDatabase().ListLeftPush(key, value);
+        }
+
+        public long RemoveFromList(string key, string value)
+        {
+            return Redis.GetDatabase().ListRemove(key, value);
+        }
+
+        public IEnumerable<string> GetList(string key)
+        {
+            return Redis.GetDatabase().ListRange(key).Select(v => (string)v);
+        }
+
+        public void DeleteKey(string scheduleBackupKey)
+        {
+            Redis.GetDatabase().KeyDelete(scheduleBackupKey);
         }
     }
 }
