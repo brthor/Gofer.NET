@@ -13,7 +13,9 @@ namespace Gofer.NET.Tests
         {
             var waitTime = 5000;
             
-            var taskClient = new TaskClient(TaskQueue.Redis("localhost:6379", nameof(ItContinuesListeningWhenATaskThrowsAnException)));
+            var taskClient = new TaskClient(
+                TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, nameof(ItContinuesListeningWhenATaskThrowsAnException)),
+                restoreScheduleFromBackup:false);
             var semaphoreFile = Path.GetTempFileName();
             
             taskClient.TaskQueue.Enqueue(() => Throw());

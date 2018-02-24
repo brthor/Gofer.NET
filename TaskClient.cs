@@ -12,17 +12,17 @@ namespace Gofer.NET
     {
         public static readonly object locker = new object();
         
-        private const int PollDelay = 500;
+        private const int PollDelay = 100;
 
         private bool IsCanceled { get; set; }
         
         public TaskQueue TaskQueue { get; }
         public TaskScheduler TaskScheduler { get; }
 
-        public TaskClient(TaskQueue taskQueue)
+        public TaskClient(TaskQueue taskQueue, bool restoreScheduleFromBackup=false)
         {
             TaskQueue = taskQueue;
-            TaskScheduler = new TaskScheduler(TaskQueue);
+            TaskScheduler = new TaskScheduler(TaskQueue, restoreFromBackup: restoreScheduleFromBackup);
             IsCanceled = false;
         }
 
