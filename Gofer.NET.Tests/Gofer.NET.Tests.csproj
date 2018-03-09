@@ -11,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Gofer.NET.csproj" />
+    <ProjectReference Include="..\Gofer.NET.Utils\Gofer.NET.Utils.csproj" />
   </ItemGroup>
 </Project>

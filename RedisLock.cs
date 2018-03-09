@@ -1,4 +1,5 @@
-﻿using StackExchange.Redis;
+﻿using System;
+using StackExchange.Redis;
 
 namespace Gofer.NET
 {
@@ -17,7 +18,11 @@ namespace Gofer.NET
 
         public void Release()
         {
-            _db.LockRelease(_key, _token);
+            var success = _db.LockRelease(_key, _token);
+            if (!success)
+            {
+                throw new ApplicationException("Unable to release redis lock.");
+            }
         }
     }
 }

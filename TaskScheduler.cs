@@ -9,7 +9,7 @@ namespace Gofer.NET
 {
     public class TaskScheduler
     {
-        private string ScheduleBackupKey => $"{nameof(TaskSchedule)}::ScheduleBackupList";
+//        private string ScheduleBackupKey => $"{nameof(TaskSchedule)}::ScheduleBackupList";
 
         private readonly TaskQueue _taskQueue;
         private readonly Dictionary<string, TaskSchedule> _scheduledTasks;
@@ -19,10 +19,10 @@ namespace Gofer.NET
             _taskQueue = taskQueue;
             _scheduledTasks = new Dictionary<string, TaskSchedule>();
 
-            if (restoreFromBackup)
-            {
-                RestoreScheduledTasksFromStorage();
-            }
+//            if (restoreFromBackup)
+//            {
+//                RestoreScheduledTasksFromStorage();
+//            }
         }
 
         public void Tick()
@@ -30,11 +30,29 @@ namespace Gofer.NET
             var tasks = _scheduledTasks.Values.ToList();
             foreach (var task in tasks)
             {
-                var taskDidRun = task.RunIfScheduleReached();
-
-                if (taskDidRun && !task.IsRecurring)
+                try
                 {
-                    RemoveTaskFromSchedule(task);
+                    var backendLock = _taskQueue.Backend.LockNonBlocking(task.LockKey);
+                    if (backendLock == null)
+                        continue;
+
+                    try
+                    {
+                        var taskDidRun = task.RunIfScheduleReached();
+                        if (taskDidRun && !task.IsRecurring)
+                        {
+                            RemoveTaskFromSchedule(task);
+                        }
+                    }
+                    finally
+                    {
+                        backendLock.Release();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+//                    throw;
                 }
             }
         }
@@ -79,33 +97,32 @@ namespace Gofer.NET
             _scheduledTasks[taskSchedule.TaskKey] = taskSchedule;
             taskSchedule.ClearLastRunTime();
 
-            var jsonTaskSchedule = new JsonTaskInfoSerializer().Serialize(taskSchedule);
-            _taskQueue.Backend.AddToList(ScheduleBackupKey, jsonTaskSchedule);
+//            var jsonTaskSchedule = JsonTaskInfoSerializer.Serialize(taskSchedule);
+//            _taskQueue.Backend.AddToList(ScheduleBackupKey, jsonTaskSchedule);
         }
 
         private void RemoveTaskFromSchedule(TaskSchedule taskSchedule)
         {
-            var jsonTaskSchedule = new JsonTaskInfoSerializer().Serialize(taskSchedule);
-            _taskQueue.Backend.RemoveFromList(ScheduleBackupKey, jsonTaskSchedule);
+            var jsonTaskSchedule = JsonTaskInfoSerializer.Serialize(taskSchedule);
+//            _taskQueue.Backend.RemoveFromList(ScheduleBackupKey, jsonTaskSchedule);
 
             _scheduledTasks.Remove(taskSchedule.TaskKey);
         }
 
         private void RestoreScheduledTasksFromStorage()
         {
-            var serializer = new JsonTaskInfoSerializer();
-            var scheduledTasks = _taskQueue.Backend.GetList(ScheduleBackupKey)
-                .Select(s => serializer.Deserialize<TaskSchedule>(s)).ToList();
-
-            foreach (var scheduledTask in scheduledTasks)
-            {
-                _scheduledTasks[scheduledTask.TaskKey] = scheduledTask;
-            }
+//            var scheduledTasks = _taskQueue.Backend.GetList(ScheduleBackupKey)
+//                .Select(s => JsonTaskInfoSerializer.Deserialize<TaskSchedule>(s)).ToList();
+//
+//            foreach (var scheduledTask in scheduledTasks)
+//            {
+//                _scheduledTasks[scheduledTask.TaskKey] = scheduledTask;
+//            }
         }
 
         public void FlushBackupStorage()
         {
-            _taskQueue.Backend.DeleteKey(ScheduleBackupKey);
+//            _taskQueue.Backend.DeleteKey(ScheduleBackupKey);
         }
     }
 }
