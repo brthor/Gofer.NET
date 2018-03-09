@@ -38,7 +38,6 @@ namespace Gofer.NET
                     if (!handledExceptions.Contains(e.GetType()))
                         throw;
                     
-                    Console.WriteLine("Retrying... ");
                     Console.WriteLine(e.Message);
                     
                     Thread.Sleep(delay); // TODO: Task.Delay, async api
@@ -68,7 +67,6 @@ namespace Gofer.NET
                     if (retry == retryCount)
                         throw new Exception("Invalid value");
 
-                    Console.WriteLine("Retrying... ");
                     Thread.Sleep(delay); // TODO: Task.Delay, async api
 
                     var variedBackoffFactor = backoffFactor + (new Random().NextDouble() * backoffVariance);

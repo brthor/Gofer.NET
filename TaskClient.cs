@@ -59,12 +59,12 @@ namespace Gofer.NET
                     }
                     finally
                     {
-                        TaskQueue.Backend.RemoveBackup(json);
+//                        TaskQueue.Backend.RemoveBackup(json);
                     }
                 }
                 
                 // Restore any expired backup tasks
-                TaskQueue.RestoreExpiredBackupTasks();
+//                TaskQueue.RestoreExpiredBackupTasks();
                 
                 Thread.Sleep(PollDelay);
             }

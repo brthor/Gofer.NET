@@ -1,6 +1,6 @@
 ﻿namespace Gofer.NET.Utils
 {
-    public interface ITaskInfoSerializer
+    public interface x
     {
         string Serialize(TaskInfo taskInfo);
 

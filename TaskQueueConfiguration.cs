@@ -7,7 +7,7 @@ namespace Gofer.NET
     {
         public string QueueName { get; set; }
         
-        public string BackupQueueName { get; set; }
+//        public string BackupQueueName { get; set; }
         
         /// <summary>
         /// If a task is not removed from the backup list after this long, it is assumed to have been abandoned or its
@@ -25,17 +25,16 @@ namespace Gofer.NET
         /// </summary>
         public bool ThreadSafe { get; set; }
         
-        public ITaskInfoSerializer TaskInfoSerializer { get; set; }
+//        public ITaskInfoSerializer TaskInfoSerializer { get; set; }
         
         public static TaskQueueConfiguration Default()
         {
             return new TaskQueueConfiguration
             {
                 QueueName = "Gofer.NET.Default",
-                BackupQueueName = "Gofer.NET.Backup.Default",
+//                BackupQueueName = "Gofer.NET.Backup.Default",
                 ThreadSafe = true,
                 MessageRetryTimeSpan = TimeSpan.FromHours(1),
-                TaskInfoSerializer = new JsonTaskInfoSerializer()
             };
         }
     }

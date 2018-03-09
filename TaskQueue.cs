@@ -20,7 +20,7 @@ namespace Gofer.NET
 
             // Usage of the Task Queue in Parallel Threads, requires the thread pool size to be increased.
             // https://stackexchange.github.io/StackExchange.Redis/Timeouts#are-you-seeing-high-number-of-busyio-or-busyworker-threads-in-the-timeout-exception
-            if (config.ThreadSafe)
+            if (Config.ThreadSafe)
             {
                 ThreadPool.SetMinThreads(200, 200);
             }
@@ -34,7 +34,7 @@ namespace Gofer.NET
         
         private void Enqueue(TaskInfo taskInfo)
         {
-            var jsonString = Config.TaskInfoSerializer.Serialize(taskInfo);
+            var jsonString = JsonTaskInfoSerializer.Serialize(taskInfo);
 
             Backend.Enqueue(jsonString);
         }
@@ -49,56 +49,56 @@ namespace Gofer.NET
             }
             finally
             {
-                Backend.RemoveBackup(taskJsonString);
+//                Backend.RemoveBackup(taskJsonString);
             }
         }
 
         public Tuple<string, TaskInfo> SafeDequeue()
         {
-            var jsonString = Backend.DequeueAndBackup();
-            var taskInfo = Config.TaskInfoSerializer.Deserialize(jsonString);
+            var jsonString = Backend.Dequeue();
+            var taskInfo = JsonTaskInfoSerializer.Deserialize(jsonString);
             return Tuple.Create(jsonString, taskInfo);
         }
         
         public TaskInfo Dequeue()
         {
             var jsonString = Backend.Dequeue();
-            var taskInfo = Config.TaskInfoSerializer.Deserialize(jsonString);
+            var taskInfo = JsonTaskInfoSerializer.Deserialize(jsonString);
             return taskInfo;
         }
 
         public void RestoreExpiredBackupTasks()
         {
-            TaskInfo taskInfo;
-
-            while (true)
-            {
-                taskInfo = Config.TaskInfoSerializer.Deserialize(Backend.PeekBackup());
-                if (taskInfo?.IsExpired(Config.MessageRetryTimeSpan) ?? true)
-                {
-                    break;
-                }
-                
-                var lockKey = nameof(RestoreExpiredBackupTasks) + "::" + taskInfo.Id;
-                var backupLock = Backend.LockBlocking(lockKey);
-
-                try
-                {
-                    var currentTopStr = Backend.PeekBackup();
-                    if (!string.IsNullOrEmpty(currentTopStr))
-                    {
-                        var currentTop = Config.TaskInfoSerializer.Deserialize(currentTopStr);
-                        if (currentTop?.Id.Equals(taskInfo.Id) ?? false)
-                        {
-                            Backend.RestoreTopBackup();
-                        }
-                    }
-                }
-                finally
-                {
-                    backupLock.Release();
-                }
-            }
+//            TaskInfo taskInfo;
+//
+//            while (true)
+//            {
+//                taskInfo = JsonTaskInfoSerializer.Deserialize(Backend.PeekBackup());
+//                if (taskInfo?.IsExpired(Config.MessageRetryTimeSpan) ?? true)
+//                {
+//                    break;
+//                }
+//                
+//                var lockKey = nameof(RestoreExpiredBackupTasks) + "::" + taskInfo.Id;
+//                var backupLock = Backend.LockBlocking(lockKey);
+//
+//                try
+//                {
+//                    var currentTopStr = Backend.PeekBackup();
+//                    if (!string.IsNullOrEmpty(currentTopStr))
+//                    {
+//                        var currentTop = JsonTaskInfoSerializer.Deserialize(currentTopStr);
+//                        if (currentTop?.Id.Equals(taskInfo.Id) ?? false)
+//                        {
+//                            Backend.RestoreTopBackup();
+//                        }
+//                    }
+//                }
+//                finally
+//                {
+//                    backupLock.Release();
+//                }
+//            }
         }
     }
 }

@@ -2,14 +2,14 @@
 
 namespace Gofer.NET.Utils
 {
-    public class JsonTaskInfoSerializer : ITaskInfoSerializer
+    public static class JsonTaskInfoSerializer
     {
-        public string Serialize(TaskInfo taskInfo)
+        public static string Serialize(TaskInfo taskInfo)
         {
             return Serialize((object) taskInfo);
         }
-        
-        public string Serialize(object obj)
+
+        public static string Serialize(object obj)
         {
             var settings = new JsonSerializerSettings
             {
@@ -22,12 +22,12 @@ namespace Gofer.NET.Utils
             return jsonString;
         }
 
-        public TaskInfo Deserialize(string taskInfoJsonString)
+        public static TaskInfo Deserialize(string taskInfoJsonString)
         {
             return Deserialize<TaskInfo>(taskInfoJsonString);
         }
         
-        public T Deserialize<T>(string jsonString) where T : class 
+        public static T Deserialize<T>(string jsonString) where T : class 
         {
             if (jsonString == null)
             {

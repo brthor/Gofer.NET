@@ -75,29 +75,21 @@ namespace Gofer.NET
         /// </summary>
         public bool RunIfScheduleReached()
         {
-            var backendLock = _backend.LockBlocking(LockKey);
-            try
+            var lastRunTime = GetLastRunTime(LastRunValueKey);
+
+            // If we've already run before, and aren't recurring, dont run again.
+            if (lastRunTime.HasValue && !IsRecurring)
             {
-                var lastRunTime = GetLastRunTime(LastRunValueKey);
-
-                // If we've already run before, and aren't recurring, dont run again.
-                if (lastRunTime.HasValue && !IsRecurring)
-                {
-                    return true;
-                }
-
-                if (TaskShouldExecuteBasedOnSchedule(lastRunTime ?? _startTime))
-                {
-                    SetLastRunTime();
-                    LogScheduledTaskRun();
-
-                    _taskInfo.ExecuteTask();
-                    return true;
-                }
+                return true;
             }
-            finally
+
+            if (TaskShouldExecuteBasedOnSchedule(lastRunTime ?? _startTime))
             {
-                backendLock.Release();
+                SetLastRunTime();
+                LogScheduledTaskRun();
+
+                _taskInfo.ExecuteTask();
+                return true;
             }
 
             return false;
