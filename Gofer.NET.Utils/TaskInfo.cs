@@ -39,7 +39,23 @@ namespace Gofer.NET.Utils
             {
                 if (staticMethod.IsAsync())
                 {
-                    return await (Task<object>) staticMethod.Invoke(null, Args);
+                    var result = staticMethod.Invoke(null, Args);
+
+                    var task = (Task) result;
+                    await task;
+
+                    var resultProperty = task.GetType().GetProperty("Result");
+                    var resultValue = resultProperty.GetValue(task);
+                
+                    // Return null if the method is a Task<void> equivalent
+                    var resultType = resultValue.GetType();
+                    if (resultType.Name.Equals("VoidTaskResult", StringComparison.Ordinal)
+                        && resultType.Namespace.Equals("System.Threading.Tasks", StringComparison.Ordinal))
+                    {
+                        return null;
+                    }
+                
+                    return resultValue;
                 }
                 
                 return staticMethod.Invoke(null, Args);
@@ -57,7 +73,23 @@ namespace Gofer.NET.Utils
             
             if (instanceMethod.IsAsync())
             {
-                return await (Task<object>) instanceMethod.Invoke(instance, Args);
+                var result = instanceMethod.Invoke(instance, Args);
+                
+                var task = (Task) result;
+                await task;
+
+                var resultProperty = task.GetType().GetProperty("Result");
+                var resultValue = resultProperty.GetValue(task);
+                
+                // Return null if the method is a Task<void> equivalent
+                var resultType = resultValue.GetType();
+                if (resultType.Name.Equals("VoidTaskResult", StringComparison.Ordinal)
+                    && resultType.Namespace.Equals("System.Threading.Tasks", StringComparison.Ordinal))
+                {
+                    return null;
+                }
+                
+                return resultValue;
             }
             
             return instanceMethod.Invoke(instance, Args);

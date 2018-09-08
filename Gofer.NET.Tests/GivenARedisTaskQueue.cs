@@ -79,7 +79,8 @@ namespace Gofer.NET.Tests
                 
                 // Awaiting inside the lambda is unnecessary, as the method is extracted and serialized.
 #pragma warning disable 4014
-                TC(() => AsyncFunc(semaphoreFile), "async")
+                TC(() => AsyncFunc(semaphoreFile), "async"),
+                TC(() => AsyncFuncThatReturnsString(semaphoreFile), "async")
 #pragma warning restore 4014
             };
             
@@ -160,6 +161,16 @@ namespace Gofer.NET.Tests
             await Task.Delay(1000);
             
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, "async");
+        }
+        
+        public async Task<string> AsyncFuncThatReturnsString(string semaphoreFile)
+        {
+            // Wait to ensure async waiting is happening.
+            await Task.Delay(1000);
+            
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, "async");
+
+            return "async";
         }
         
         public void NullableTypeFunc(DateTime? dateTime, string semaphoreFile)

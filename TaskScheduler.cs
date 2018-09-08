@@ -97,7 +97,7 @@ namespace Gofer.NET
         private void AddTaskToSchedule(TaskSchedule taskSchedule)
         {
             _scheduledTasks[taskSchedule.TaskKey] = taskSchedule;
-            taskSchedule.ClearLastRunTime();
+            taskSchedule.ClearLastRunTime().Wait();
 
 //            var jsonTaskSchedule = JsonTaskInfoSerializer.Serialize(taskSchedule);
 //            _taskQueue.Backend.AddToList(ScheduleBackupKey, jsonTaskSchedule);

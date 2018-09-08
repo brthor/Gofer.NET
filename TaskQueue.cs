@@ -45,9 +45,14 @@ namespace Gofer.NET
         {
             var (taskJsonString, taskInfo) = await SafeDequeue();
 
+            if (taskInfo == null)
+            {
+                return;
+            }
+
             try
             {
-                taskInfo?.ExecuteTask();
+                await taskInfo.ExecuteTask();
             }
             finally
             {
