@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using Gofer.NET.Utils.Errors;
 
 namespace Gofer.NET.Utils
@@ -26,7 +27,7 @@ namespace Gofer.NET.Utils
             return CreatedAtUtc < (DateTime.UtcNow - expirationSpan);
         }
 
-        public object ExecuteTask()
+        public async Task<object> ExecuteTask()
         {
             var assembly = Assembly.Load(AssemblyName);
             var type = assembly.GetType(TypeName);
@@ -36,6 +37,27 @@ namespace Gofer.NET.Utils
 
             if (staticMethod != null)
             {
+                if (staticMethod.IsAsync())
+                {
+                    var result = staticMethod.Invoke(null, Args);
+
+                    var task = (Task) result;
+                    await task;
+
+                    var resultProperty = task.GetType().GetProperty("Result");
+                    var resultValue = resultProperty.GetValue(task);
+                
+                    // Return null if the method is a Task<void> equivalent
+                    var resultType = resultValue.GetType();
+                    if (resultType.Name.Equals("VoidTaskResult", StringComparison.Ordinal)
+                        && resultType.Namespace.Equals("System.Threading.Tasks", StringComparison.Ordinal))
+                    {
+                        return null;
+                    }
+                
+                    return resultValue;
+                }
+                
                 return staticMethod.Invoke(null, Args);
             }
             
@@ -48,6 +70,27 @@ namespace Gofer.NET.Utils
             }
 
             var instance = Activator.CreateInstance(type);
+            
+            if (instanceMethod.IsAsync())
+            {
+                var result = instanceMethod.Invoke(instance, Args);
+                
+                var task = (Task) result;
+                await task;
+
+                var resultProperty = task.GetType().GetProperty("Result");
+                var resultValue = resultProperty.GetValue(task);
+                
+                // Return null if the method is a Task<void> equivalent
+                var resultType = resultValue.GetType();
+                if (resultType.Name.Equals("VoidTaskResult", StringComparison.Ordinal)
+                    && resultType.Namespace.Equals("System.Threading.Tasks", StringComparison.Ordinal))
+                {
+                    return null;
+                }
+                
+                return resultValue;
+            }
             
             return instanceMethod.Invoke(instance, Args);
         }

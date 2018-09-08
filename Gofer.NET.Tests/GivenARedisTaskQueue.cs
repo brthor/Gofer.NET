@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ namespace Gofer.NET.Tests
         }
 
         [Fact]
-        public void ItCapturesArgumentsPassedToEnqueuedDelegate()
+        public async Task ItCapturesArgumentsPassedToEnqueuedDelegate()
         {
             var testFixture = new TaskQueueTestFixture(nameof(ItCapturesArgumentsPassedToEnqueuedDelegate));
 
@@ -74,8 +75,15 @@ namespace Gofer.NET.Tests
                 TC(() => NullableTypeFunc(now, semaphoreFile), now.ToString()),
                 TC(() => ArrayFunc1(new[] {"this", "string", "is"}, semaphoreFile), "this,string,is"),
                 TC(() => ArrayFunc2(new[] {1, 2, 3, 4}, semaphoreFile), "1,2,3,4"),
-                TC(() => ArrayFunc3(new int?[] {1, 2, 3, null, 5}, semaphoreFile), "1,2,3,null,5")
+                TC(() => ArrayFunc3(new int?[] {1, 2, 3, null, 5}, semaphoreFile), "1,2,3,null,5"),
+                
+                // Awaiting inside the lambda is unnecessary, as the method is extracted and serialized.
+#pragma warning disable 4014
+                TC(() => AsyncFunc(semaphoreFile), "async"),
+                TC(() => AsyncFuncThatReturnsString(semaphoreFile), "async")
+#pragma warning restore 4014
             };
+            
 
             foreach (var tup in delgates)
             {
@@ -84,8 +92,8 @@ namespace Gofer.NET.Tests
                 
                 File.Delete(semaphoreFile);
                 
-                testFixture.TaskQueue.Enqueue(actionExpr); 
-                testFixture.TaskQueue.ExecuteNext();
+                await testFixture.TaskQueue.Enqueue(actionExpr); 
+                await testFixture.TaskQueue.ExecuteNext();
 
                 File.ReadAllText(semaphoreFile).Should().Be(expectedString);
             }
@@ -94,26 +102,25 @@ namespace Gofer.NET.Tests
         }
         
         [Fact]
-        public void ItEnqueuesAndReceivesDelegatesThatAreRunnable()
+        public async Task ItEnqueuesAndReceivesDelegatesThatAreRunnable()
         {
             var testFixture = new TaskQueueTestFixture(nameof(ItEnqueuesAndReceivesDelegatesThatAreRunnable));
             
             testFixture.EnsureSemaphoreDoesntExist();
-            testFixture.PushPopExecuteWriteSemaphore();
+            await testFixture.PushPopExecuteWriteSemaphore();
             testFixture.EnsureSemaphore();
         }
 
         [Fact]
         public async Task ItsTasksAreConsumedOnlyOnceByMultipleConsumers()
         {
-            var numberOfJobs = 4;
+            // Higher numbers here increase confidence
+            var numberOfJobs = 16;
+            var numberOfConsumers = 4;
             
             var sharedTaskQueueName = nameof(ItsTasksAreConsumedOnlyOnceByMultipleConsumers);
-            var consumers = new[]
-            {
-                new TaskQueueTestFixture(sharedTaskQueueName),
-                new TaskQueueTestFixture(sharedTaskQueueName)
-            };
+            var consumers = Enumerable.Range(0, numberOfConsumers)
+                .Select(_ => new TaskQueueTestFixture(sharedTaskQueueName)).ToList();
 
             var semaphoreFiles = new List<string>();
             for(int i=0;i < numberOfJobs;++i)
@@ -123,12 +130,14 @@ namespace Gofer.NET.Tests
                 semaphoreFiles.Add(path);
                 
                 var sharedTaskQueue = consumers[0].TaskQueue;
-                sharedTaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSempaphore(path));
+                await sharedTaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSemaphore(path));
             }
 
             var tasks = new List<Task>();
 
-            for (int i = 0; i < numberOfJobs; i += consumers.Length)
+            // Purposely executing more times than the number of tasks we have
+            // Specifically numberOfJobs * numberOfConsumers times.
+            for (var i = 0; i < numberOfJobs; i += 1)
             {
                 foreach (var consumer in consumers)
                 {
@@ -137,75 +146,91 @@ namespace Gofer.NET.Tests
                 }
             }
 
-            foreach (var task in tasks)
-            {
-                await task;
-            }
+            await Task.WhenAll(tasks);
 
             foreach (var semaphoreFile in semaphoreFiles)
             {
-                File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText);
+                File.ReadAllText(semaphoreFile).Should()
+                    .Be(TaskQueueTestFixture.SemaphoreText);
             }
+        }
+
+        public async Task AsyncFunc(string semaphoreFile)
+        {
+            // Wait to ensure async waiting is happening.
+            await Task.Delay(1000);
+            
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, "async");
+        }
+        
+        public async Task<string> AsyncFuncThatReturnsString(string semaphoreFile)
+        {
+            // Wait to ensure async waiting is happening.
+            await Task.Delay(1000);
+            
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, "async");
+
+            return "async";
         }
         
         public void NullableTypeFunc(DateTime? dateTime, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, dateTime);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, dateTime);
         }
         
         public void DateTimeFunc(DateTime dateTime, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, dateTime);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, dateTime);
         }
 
         public void IntFunc(int num, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, num);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
         }
         
         public void NullableIntFunc(int? num, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, num ?? -1);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num ?? -1);
         }
         
         public void LongFunc(long num, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, num);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
         }
         
         public void FloatFunc(float num, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, num);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
         }
         
         public void BoolFunc(bool num, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, num);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
         }
         
         public void DoubleFunc(double num, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, num);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
         }
         
         public void StringFunc(string num, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, num);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
         }
         
         public void ObjectFunc(object num, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, num);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
         }
         
         public void ArrayFunc1(string[] nums, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, string.Join(",", nums));
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, string.Join(",", nums));
         }
         
         public void ArrayFunc2(int[] nums, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, string.Join(",", nums));
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, string.Join(",", nums));
         }
         
         public void ArrayFunc3(int?[] nums, string semaphoreFile)
@@ -219,7 +244,7 @@ namespace Gofer.NET.Tests
                 first = false;
             }
             
-            TaskQueueTestFixture.WriteSempaphoreValue(semaphoreFile, str);
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, str);
         }
     }
 }

@@ -1,7 +1,9 @@
-﻿namespace Gofer.NET
+﻿using System.Threading.Tasks;
+
+namespace Gofer.NET
 {
     public interface IBackendLock
     {
-        void Release();
+        Task Release();
     }
 }

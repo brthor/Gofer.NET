@@ -2,13 +2,13 @@
 
 namespace Gofer.NET
 {
-    public static class Trace
+    public static class ThreadSafeColoredConsole
     {
-        private static readonly object _locker = new object();
+        private static readonly object Locker = new object();
         
         public static void Exception(string message, Exception exception)
         {
-            lock (_locker)
+            lock (Locker)
             {
                 var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -22,7 +22,7 @@ namespace Gofer.NET
         
         public static void Error(string message)
         {
-            lock (_locker)
+            lock (Locker)
             {
                 var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -35,7 +35,7 @@ namespace Gofer.NET
         
         public static void Warning(string message)
         {
-            lock (_locker)
+            lock (Locker)
             {
                 var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Yellow;
@@ -48,7 +48,7 @@ namespace Gofer.NET
         
         public static void Info(string message)
         {
-            lock (_locker)
+            lock (Locker)
             {
                 var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Blue;

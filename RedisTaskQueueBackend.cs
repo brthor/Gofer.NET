@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Gofer.NET;
 using StackExchange.Redis;
 
@@ -21,14 +22,14 @@ namespace Gofer.NET
 //            BackupQueueName = backupQueueName;
         }
 
-        public void Enqueue(string jsonString)
+        public async Task Enqueue(string jsonString)
         {
-            RedisQueue.Push(QueueName, jsonString);
+            await RedisQueue.Push(QueueName, jsonString);
         }
 
-        public string Dequeue()
+        public async Task<string> Dequeue()
         {
-            var jsonString = RedisQueue.Pop(QueueName);
+            var jsonString = await RedisQueue.Pop(QueueName);
             return jsonString;
         }
 
@@ -58,44 +59,47 @@ namespace Gofer.NET
 //            RedisQueue.Remove(BackupQueueName, jsonString);
 //        }
 
-        public IBackendLock LockBlocking(string lockKey)
+        public async Task<IBackendLock> LockBlocking(string lockKey)
         {
-            return Redis.LockBlockingAsync(lockKey).GetAwaiter().GetResult();
+            return await Redis.LockBlockingAsync(lockKey);
         }
         
-        public IBackendLock LockNonBlocking(string lockKey)
+        public async Task<IBackendLock> LockNonBlocking(string lockKey)
         {
-            return Redis.LockNonBlockingAsync(lockKey).GetAwaiter().GetResult();
+            return await Redis.LockNonBlockingAsync(lockKey);
         }
 
-        public void SetString(string key, string value)
+        public async Task SetString(string key, string value)
         {
-            Redis.GetDatabase().StringSet(key, value);
+            await Redis.GetDatabase().StringSetAsync(key, value);
         }
 
-        public string GetString(string key)
+        public async Task<string> GetString(string key)
         {
-            return Redis.GetDatabase().StringGet(key);
+            return await Redis.GetDatabase().StringGetAsync(key);
         }
 
-        public long AddToList(string key, string value)
+        public async Task<long> AddToList(string key, string value)
         {
-            return Redis.GetDatabase().ListLeftPush(key, value);
+            return await Redis.GetDatabase().ListLeftPushAsync(key, value);
         }
 
-        public long RemoveFromList(string key, string value)
+        public async Task<long> RemoveFromList(string key, string value)
         {
-            return Redis.GetDatabase().ListRemove(key, value);
+            return await Redis.GetDatabase().ListRemoveAsync(key, value);
         }
 
-        public IEnumerable<string> GetList(string key)
+        public async Task<IEnumerable<string>> GetList(string key)
         {
-            return Redis.GetDatabase().ListRange(key).Select(v => (string)v);
+            var list = await Redis.GetDatabase().ListRangeAsync(key);
+            var strList = list.Select(v => (string)v);
+
+            return strList;
         }
 
-        public void DeleteKey(string scheduleBackupKey)
+        public async Task DeleteKey(string scheduleBackupKey)
         {
-            Redis.GetDatabase().KeyDelete(scheduleBackupKey);
+            await Redis.GetDatabase().KeyDeleteAsync(scheduleBackupKey);
         }
     }
 }

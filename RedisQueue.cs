@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using StackExchange.Redis;
 using Gofer.NET;
@@ -9,65 +11,75 @@ namespace Gofer.NET
     {
         private ConnectionMultiplexer Redis { get; }
 
+        /// <summary>
+        /// Redis Queue implements a FIFO data structure backed by a redis instance.
+        /// 
+        /// The "Left" of the list is considered to be the tail of the queue,
+        /// and the "Right" the head. Note this is opposite of the StackExchange.Redis
+        /// documentation. This is necessary to properly use the `ListRightPopLeftPushAsync`
+        /// method to transfer a value from the head of a queue to the tail of another
+        /// (used to assure that a message is consumed at-least once).
+        /// </summary>
+        /// <param name="redis"></param>
         public RedisQueue(ConnectionMultiplexer redis)
         {
             Redis = redis;
         }
         
-        public void Push(RedisKey stackName, RedisValue value)
+        public async Task Push(RedisKey queueName, RedisValue value)
         {
-            Retry.OnException(() => Redis.GetDatabase().ListLeftPush(stackName, value),
-                new[] {typeof(RedisTimeoutException)});
+            await Redis.GetDatabase().ListLeftPushAsync(queueName, value);
         }
 
-        public RedisValue Pop(RedisKey stackName)
+        public async Task<RedisValue> Pop(RedisKey queueName)
         {
-            return Retry.OnException(() => Redis.GetDatabase().ListRightPop(stackName),
-                new[] {typeof(RedisTimeoutException)});
+            return await Redis.GetDatabase().ListRightPopAsync(queueName);
         }
 
-        public RedisValue PopPush(RedisKey popFromStackName, RedisKey pushToStackName)
+        public async Task<RedisValue> PopPush(RedisKey popFromQueueName, RedisKey pushToQueueName)
         {
-            return Retry.OnException(() => Redis.GetDatabase().ListRightPopLeftPush(popFromStackName, pushToStackName), 
-                new[] {typeof(RedisTimeoutException)});
+            return await Redis.GetDatabase().ListRightPopLeftPushAsync(popFromQueueName, pushToQueueName);
         }
 
-        public RedisValue Peek(RedisKey stackName)
+        public async Task<RedisValue> Peek(RedisKey stackName)
         {
-            return Retry.OnException(() => Redis.GetDatabase().ListGetByIndex(stackName, -1), 
-                new[] {typeof(RedisTimeoutException)});
+            return await Redis.GetDatabase().ListGetByIndexAsync(stackName, -1);
         }
         
-        public RedisValue PeekTail(RedisKey stackName)
+        public async Task<RedisValue> PeekTail(RedisKey stackName)
         {
-            return Retry.OnException(() => Redis.GetDatabase().ListGetByIndex(stackName, 0), 
-                new[] {typeof(RedisTimeoutException)});
+            return await Redis.GetDatabase().ListGetByIndexAsync(stackName, 0); 
         }
-
-        public bool Remove(RedisKey stackName, RedisValue value)
+        
+        /// <summary>
+        /// Removes the most recently inserted value from the queue. (Searches from tail to head)
+        /// </summary>
+        /// <returns>false if no value was found to be removed, true otherwise.</returns>
+        public async Task<bool> Remove(RedisKey stackName, RedisValue value)
         {
-            var removedCount = Retry.OnException(() => Redis.GetDatabase().ListRemove(stackName, value, -1), 
-                new[] {typeof(RedisTimeoutException)});
+            var removedCount = await Redis.GetDatabase().ListRemoveAsync(stackName, value, -1); 
 
             return Math.Abs(removedCount) == 1;
         }
 
-        public async Task<RedisValue[]> PopAll(RedisKey stackName)
+        public async Task<IEnumerable<RedisValue>> PopAll(RedisKey stackName)
         {
             var db = Redis.GetDatabase();
-
-            var lockName = "PopAllLock::" + (string) stackName;
-            var listLength = db.ListLength(lockName);
             
             var transaction = db.CreateTransaction();
-            var listValuesTask = transaction.ListRangeAsync(stackName, stop: listLength - 1);
-            var listTrimTask = transaction.ListTrimAsync(stackName, start: listLength, stop: -1);
+            
+            // `LRANGE <list> 0 1` fetches all values, but in LIFO order
+            var listValuesTask = transaction.ListRangeAsync(stackName, start: 0, stop: - 1);
+            
+            // `LTRIM <list> 1 0` removes all values
+            var listTrimTask = transaction.ListTrimAsync(stackName, start: 1, stop: 0);
             transaction.Execute();
 
             var listValues = await listValuesTask;
             await listTrimTask;
-
-            return listValues;
+            
+            // Convert list values to FIFO orer
+            return listValues.Reverse();
         }
     }
 }

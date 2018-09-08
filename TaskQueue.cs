@@ -3,6 +3,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using Gofer.NET.Utils;
 using Newtonsoft.Json;
 
@@ -20,49 +21,70 @@ namespace Gofer.NET
 
             // Usage of the Task Queue in Parallel Threads, requires the thread pool size to be increased.
             // https://stackexchange.github.io/StackExchange.Redis/Timeouts#are-you-seeing-high-number-of-busyio-or-busyworker-threads-in-the-timeout-exception
+            // REVIEW: This should no longer be necessary now that we are using the redis async api.
             if (Config.ThreadSafe)
             {
                 ThreadPool.SetMinThreads(200, 200);
             }
         }
 
-        public void Enqueue(Expression<Action> expression)
+        public async Task Enqueue(Expression<Action> expression)
         {
             var taskInfo = expression.ToTaskInfo();
-            Enqueue(taskInfo);
+            await Enqueue(taskInfo);
         }
         
-        private void Enqueue(TaskInfo taskInfo)
+        private async Task Enqueue(TaskInfo taskInfo)
         {
             var jsonString = JsonTaskInfoSerializer.Serialize(taskInfo);
 
-            Backend.Enqueue(jsonString);
+            await Backend.Enqueue(jsonString);
         }
         
-        public void ExecuteNext()
+        public async Task ExecuteNext()
         {
-            var (taskJsonString, taskInfo) = SafeDequeue();
+            var (taskJsonString, taskInfo) = await SafeDequeue();
+
+            if (taskInfo == null)
+            {
+                return;
+            }
 
             try
             {
-                taskInfo?.ExecuteTask();
+                await taskInfo.ExecuteTask();
             }
             finally
             {
 //                Backend.RemoveBackup(taskJsonString);
             }
         }
-
-        public Tuple<string, TaskInfo> SafeDequeue()
+        
+        /// <summary>
+        /// Returns the serialized TaskInfo as well as deserialized so that the serialized value can later
+        /// be removed from the backing queue.
+        /// </summary>
+        /// <returns></returns>
+        public async Task<Tuple<string, TaskInfo>> SafeDequeue()
         {
-            var jsonString = Backend.Dequeue();
+            var jsonString = await Backend.Dequeue();
+            if (jsonString == null)
+            {
+                return Tuple.Create<string, TaskInfo>(null, null);
+            }
+            
             var taskInfo = JsonTaskInfoSerializer.Deserialize(jsonString);
             return Tuple.Create(jsonString, taskInfo);
         }
         
-        public TaskInfo Dequeue()
+        public async Task<TaskInfo> Dequeue()
         {
-            var jsonString = Backend.Dequeue();
+            var jsonString = await Backend.Dequeue();
+            if (jsonString == null)
+            {
+                return null;
+            }
+            
             var taskInfo = JsonTaskInfoSerializer.Deserialize(jsonString);
             return taskInfo;
         }
