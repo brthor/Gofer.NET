@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 using Gofer.NET.Utils;
 using StackExchange.Redis;
 
@@ -17,6 +18,7 @@ namespace Gofer.NET
         public TaskScheduler(TaskQueue taskQueue, bool restoreFromBackup=false)
         {
             _taskQueue = taskQueue;
+            
             _scheduledTasks = new Dictionary<string, TaskSchedule>();
 
 //            if (restoreFromBackup)
@@ -25,20 +27,21 @@ namespace Gofer.NET
 //            }
         }
 
-        public void Tick()
+        public async Task Tick()
         {
             var tasks = _scheduledTasks.Values.ToList();
             foreach (var task in tasks)
             {
                 try
                 {
-                    var backendLock = _taskQueue.Backend.LockNonBlocking(task.LockKey);
+                    // Ensure only one worker processes the scheduled task at a time.
+                    var backendLock = await _taskQueue.Backend.LockNonBlocking(task.LockKey);
                     if (backendLock == null)
                         continue;
 
                     try
                     {
-                        var taskDidRun = task.RunIfScheduleReached();
+                        var taskDidRun = await task.RunIfScheduleReached();
                         if (taskDidRun && !task.IsRecurring)
                         {
                             RemoveTaskFromSchedule(task);
@@ -46,13 +49,12 @@ namespace Gofer.NET
                     }
                     finally
                     {
-                        backendLock.Release();
+                        await backendLock.Release();
                     }
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
-//                    throw;
+                    ThreadSafeColoredConsole.Exception("Error processing Schedule Tick.", e);
                 }
             }
         }
@@ -103,7 +105,7 @@ namespace Gofer.NET
 
         private void RemoveTaskFromSchedule(TaskSchedule taskSchedule)
         {
-            var jsonTaskSchedule = JsonTaskInfoSerializer.Serialize(taskSchedule);
+//            var jsonTaskSchedule = JsonTaskInfoSerializer.Serialize(taskSchedule);
 //            _taskQueue.Backend.RemoveFromList(ScheduleBackupKey, jsonTaskSchedule);
 
             _scheduledTasks.Remove(taskSchedule.TaskKey);

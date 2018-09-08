@@ -8,7 +8,7 @@
 Run background jobs (one-off, or scheduled) on a worker pool easily. 
 
  - Scale your worker pool by simply adding new nodes. 
- - Tasks are processed at least once, and not lost if a worker dies.
+ - ~~Tasks are processed at least once, and not lost if a worker dies.~~ (Currently disabled due to incorrect behavior until further development.) 
  - Supports Redis backend, with an extensible API for developing additional backends.
 
 Inspired by celery for python, this is a distributed job runner for .NET Standard 2.0 Applications. Currently only tested using .NET Core 2.0.

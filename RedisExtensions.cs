@@ -29,7 +29,7 @@ namespace Gofer.NET
             var startTime = DateTime.Now;
             while (true)
             {
-                if (db.LockTake(key, token, duration.Value))
+                if (await db.LockTakeAsync(key, token, duration.Value))
                 {
                     return new RedisLock(db, key, token);
                 }
@@ -38,7 +38,7 @@ namespace Gofer.NET
 
                 if ((DateTime.Now - startTime) >= blockingTimeout)
                 {
-                    throw new ApplicationException("Unable to lock resource.");
+                    throw new Exception("Unable to lock resource.");
                 }
             }
         }
@@ -59,7 +59,7 @@ namespace Gofer.NET
             RedisValue token = Guid.NewGuid().ToString();
             var db = redis.GetDatabase();
 
-            if (db.LockTake(key, token, duration.Value))
+            if (await db.LockTakeAsync(key, token, duration.Value))
             {
                 return new RedisLock(db, key, token);
             }

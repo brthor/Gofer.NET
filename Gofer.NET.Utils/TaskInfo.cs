@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using Gofer.NET.Utils.Errors;
 
 namespace Gofer.NET.Utils
@@ -26,7 +27,7 @@ namespace Gofer.NET.Utils
             return CreatedAtUtc < (DateTime.UtcNow - expirationSpan);
         }
 
-        public object ExecuteTask()
+        public async Task<object> ExecuteTask()
         {
             var assembly = Assembly.Load(AssemblyName);
             var type = assembly.GetType(TypeName);
@@ -36,6 +37,11 @@ namespace Gofer.NET.Utils
 
             if (staticMethod != null)
             {
+                if (staticMethod.IsAsync())
+                {
+                    return await (Task<object>) staticMethod.Invoke(null, Args);
+                }
+                
                 return staticMethod.Invoke(null, Args);
             }
             
@@ -48,6 +54,11 @@ namespace Gofer.NET.Utils
             }
 
             var instance = Activator.CreateInstance(type);
+            
+            if (instanceMethod.IsAsync())
+            {
+                return await (Task<object>) instanceMethod.Invoke(instance, Args);
+            }
             
             return instanceMethod.Invoke(instance, Args);
         }

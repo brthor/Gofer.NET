@@ -9,7 +9,7 @@ namespace Gofer.NET.Tests
     public class GivenATaskClient
     {
         [Fact]
-        public void ItContinuesListeningWhenATaskThrowsAnException()
+        public async Task ItContinuesListeningWhenATaskThrowsAnException()
         {
             var waitTime = 5000;
             
@@ -18,14 +18,14 @@ namespace Gofer.NET.Tests
                 restoreScheduleFromBackup:false);
             var semaphoreFile = Path.GetTempFileName();
             
-            taskClient.TaskQueue.Enqueue(() => Throw());
-            taskClient.TaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSempaphore(semaphoreFile));
+            await taskClient.TaskQueue.Enqueue(() => Throw());
+            await taskClient.TaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile));
 
-            var task = Task.Run(() => taskClient.Listen());
-            Thread.Sleep(waitTime);
+            var task = Task.Run(async () => await taskClient.Listen());
+            await Task.Delay(waitTime);
 
             taskClient.CancelListen();
-            task.Wait();
+            await task;
             
             TaskQueueTestFixture.EnsureSemaphore(semaphoreFile);
         }

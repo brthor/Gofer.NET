@@ -1,28 +1,29 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Gofer.NET
 {
     public interface ITaskQueueBackend
     {
-        void Enqueue(string jsonString);
-        string Dequeue();
+        Task Enqueue(string jsonString);
+        Task<string> Dequeue();
 
 //        string DequeueAndBackup();
 //        string PeekBackup();
 //        string RestoreTopBackup();
 //        void RemoveBackup(string jsonString);
 
-        IBackendLock LockBlocking(string lockKey);
-        IBackendLock LockNonBlocking(string lockKey);
+        Task<IBackendLock> LockBlocking(string lockKey);
+        Task<IBackendLock> LockNonBlocking(string lockKey);
         
-        void SetString(string key, string value);
-        string GetString(string key);
+        Task SetString(string key, string value);
+        Task<string> GetString(string key);
 
-        long AddToList(string key, string value);
-        long RemoveFromList(string key, string value);
+        Task<long> AddToList(string key, string value);
+        Task<long> RemoveFromList(string key, string value);
 
-        IEnumerable<string> GetList(string key);
-        void DeleteKey(string scheduleBackupKey);
+        Task<IEnumerable<string>> GetList(string key);
+        Task DeleteKey(string scheduleBackupKey);
     }
 }

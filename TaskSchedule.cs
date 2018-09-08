@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Gofer.NET.Utils;
 using NCrontab;
 using Newtonsoft.Json;
@@ -7,7 +8,6 @@ namespace Gofer.NET
 {
     public class TaskSchedule
     {
-
         public string LockKey => $"{nameof(TaskSchedule)}::{TaskKey}::ScheduleLock";
 
         private string LastRunValueKey => $"{nameof(TaskSchedule)}::{TaskKey}::LastRunValue";
@@ -73,22 +73,23 @@ namespace Gofer.NET
         /// <summary>
         /// Returns true if the task is run.
         /// </summary>
-        public bool RunIfScheduleReached()
+        public async Task<bool> RunIfScheduleReached()
         {
-            var lastRunTime = GetLastRunTime(LastRunValueKey);
+            var lastRunTime = await GetLastRunTime(LastRunValueKey);
 
             // If we've already run before, and aren't recurring, dont run again.
             if (lastRunTime.HasValue && !IsRecurring)
             {
+                // True is returned so the task removal from schedule is effectively propagated among workers.
                 return true;
             }
 
             if (TaskShouldExecuteBasedOnSchedule(lastRunTime ?? _startTime))
             {
-                SetLastRunTime();
+                await SetLastRunTime();
                 LogScheduledTaskRun();
 
-                _taskInfo.ExecuteTask();
+                await _taskInfo.ExecuteTask();
                 return true;
             }
 
@@ -133,9 +134,9 @@ namespace Gofer.NET
         /// <summary>
         /// Not Thread safe. Use External locking.
         /// </summary>
-        private DateTime? GetLastRunTime(string lastRunValueKey)
+        private async Task<DateTime?> GetLastRunTime(string lastRunValueKey)
         {
-            var jsonString = _backend.GetString(lastRunValueKey);
+            var jsonString = await _backend.GetString(lastRunValueKey);
 
             if (string.IsNullOrEmpty(jsonString))
             {
@@ -148,9 +149,9 @@ namespace Gofer.NET
         /// <summary>
         /// Not thread safe. Use external locking.
         /// </summary>
-        private void SetLastRunTime()
+        private async Task SetLastRunTime()
         {
-            _backend.SetString(LastRunValueKey, JsonConvert.SerializeObject(DateTime.UtcNow));
+            await _backend.SetString(LastRunValueKey, JsonConvert.SerializeObject(DateTime.UtcNow));
         }
 
         private void LogScheduledTaskRun()
@@ -165,7 +166,7 @@ namespace Gofer.NET
         {
             try
             {
-                var schedule = CrontabSchedule.Parse(crontab, new CrontabSchedule.ParseOptions(){IncludingSeconds = true});
+                var schedule = CrontabSchedule.Parse(crontab, new CrontabSchedule.ParseOptions{IncludingSeconds = true});
                 schedule.GetNextOccurrence(DateTime.UtcNow);
             }
             catch (Exception ex)
@@ -177,9 +178,9 @@ namespace Gofer.NET
         /// <summary>
         /// Used to prevent overlap between tasks added at different times but sharing a name.
         /// </summary>
-        public void ClearLastRunTime()
+        public async Task ClearLastRunTime()
         {
-            _backend.DeleteKey(LastRunValueKey);
+            await _backend.DeleteKey(LastRunValueKey);
         }
     }
 }

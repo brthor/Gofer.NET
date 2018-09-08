@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using StackExchange.Redis;
 
 namespace Gofer.NET
@@ -16,12 +17,13 @@ namespace Gofer.NET
             _token = token;
         }
 
-        public void Release()
+        public async Task Release()
         {
-            var success = _db.LockRelease(_key, _token);
+            var success = await _db.LockReleaseAsync(_key, _token);
             if (!success)
             {
-                throw new ApplicationException("Unable to release redis lock.");
+                throw new Exception("Unable to release redis lock. " +
+                                    "Usually this means that the lock itself timed out and was auto-released.");
             }
         }
     }

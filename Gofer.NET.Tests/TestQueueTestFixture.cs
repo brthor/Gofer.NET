@@ -1,13 +1,14 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 
 namespace Gofer.NET.Tests
 {
     public class TaskQueueTestFixture
     {
-        private static readonly ReaderWriterLock locker = new ReaderWriterLock();
+        private static readonly ReaderWriterLock Locker = new ReaderWriterLock();
         
         public static string SemaphoreText => "completed";
         
@@ -25,14 +26,14 @@ namespace Gofer.NET.Tests
             TaskQueue = taskQueue ?? TaskQueue.Redis(RedisConnectionString, testQueueName);
             
             // Clear out the queue
-            while(TaskQueue.Dequeue() != null) { }
+            while(TaskQueue.Dequeue().Result != null) { }
         }
 
-        public void PushPopExecuteWriteSemaphore()
+        public async Task PushPopExecuteWriteSemaphore()
         {
-            TaskQueue.Enqueue(() => WriteSempaphore(_semaphoreFile));
-            var dequeuedTaskInfo = TaskQueue.Dequeue();
-            dequeuedTaskInfo.ExecuteTask();
+            await TaskQueue.Enqueue(() => WriteSemaphore(_semaphoreFile));
+            var dequeuedTaskInfo = await TaskQueue.Dequeue();
+            await dequeuedTaskInfo.ExecuteTask();
         }
 
         public void EnsureSemaphoreDoesntExist()
@@ -48,32 +49,32 @@ namespace Gofer.NET.Tests
         
         public static void EnsureSemaphore(string semaphoreFile)
         {
-            File.ReadAllText(semaphoreFile).Should().Be(SemaphoreText);
-        }
-
-        public static void WriteSempaphore(string semaphoreFile)
-        {
             try
             {
-                locker.AcquireWriterLock(int.MaxValue); 
-                File.AppendAllText(semaphoreFile, SemaphoreText);
+                Locker.AcquireReaderLock(30000); 
+                File.ReadAllText(semaphoreFile).Should().Be(SemaphoreText);
             }
             finally
             {
-                locker.ReleaseWriterLock();
+                Locker.ReleaseReaderLock();
             }
         }
+
+        public static void WriteSemaphore(string semaphoreFile)
+        {
+            WriteSemaphoreValue(semaphoreFile, SemaphoreText);
+        }
         
-        public static void WriteSempaphoreValue(string semaphoreFile, object value)
+        public static void WriteSemaphoreValue(string semaphoreFile, object value)
         {
             try
             {
-                locker.AcquireWriterLock(int.MaxValue); 
+                Locker.AcquireWriterLock(30000); 
                 File.AppendAllText(semaphoreFile, value?.ToString() ?? "null");
             }
             finally
             {
-                locker.ReleaseWriterLock();
+                Locker.ReleaseWriterLock();
             }
         }
     }

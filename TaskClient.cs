@@ -10,36 +10,45 @@ namespace Gofer.NET
 {
     public class TaskClient
     {
-        public static readonly object locker = new object();
+        private static readonly object Locker = new object();
         
         private const int PollDelay = 100;
 
         private bool IsCanceled { get; set; }
         
         public TaskQueue TaskQueue { get; }
+        public Action<Exception> OnError { get; }
         public TaskScheduler TaskScheduler { get; }
 
-        public TaskClient(TaskQueue taskQueue, bool restoreScheduleFromBackup=false)
+        public TaskClient(
+            TaskQueue taskQueue, 
+            bool restoreScheduleFromBackup=false,
+            Action<Exception> onError=null)
         {
             TaskQueue = taskQueue;
+            OnError = onError;
             TaskScheduler = new TaskScheduler(TaskQueue, restoreFromBackup: restoreScheduleFromBackup);
             IsCanceled = false;
+            
         }
 
-        public void Listen()
+        public async Task Listen()
         {
             while (true)
             {
-                if (IsCanceled)
+                lock (Locker)
                 {
-                    return;
+                    if (IsCanceled)
+                    {
+                        return;
+                    }
                 }
                 
                 // Tick the Task Scheduler
-                TaskScheduler.Tick();
+                await TaskScheduler.Tick();
                 
                 // Execute Any Queued Tasks
-                var (json, info) = TaskQueue.SafeDequeue();
+                var (json, info) = await TaskQueue.SafeDequeue();
                 if (info != null)
                 {
                     LogTaskStarted(info);
@@ -48,7 +57,7 @@ namespace Gofer.NET
                     {
                         var now = DateTime.Now;
                         
-                        info.ExecuteTask();
+                        await info.ExecuteTask();
                         
                         var completionSeconds = (DateTime.Now - now).TotalSeconds;
                         LogTaskFinished(info, completionSeconds);
@@ -72,25 +81,27 @@ namespace Gofer.NET
 
         private void LogTaskException(TaskInfo info, Exception exception)
         {
+            OnError?.Invoke(exception);
+
             var logMessage = Messages.TaskThrewException(info);
-            Trace.Exception(logMessage, exception);
+            ThreadSafeColoredConsole.Exception(logMessage, exception);
         }
 
         private void LogTaskStarted(TaskInfo info)
         {
             var logMessage = Messages.TaskStarted(info);
-            Trace.Info(logMessage);
+            ThreadSafeColoredConsole.Info(logMessage);
         }
         
         private void LogTaskFinished(TaskInfo info, double completionSeconds)
         {
             var logMessage = Messages.TaskFinished(info, completionSeconds);
-            Trace.Info(logMessage);
+            ThreadSafeColoredConsole.Info(logMessage);
         }
 
         public void CancelListen()
         {
-            lock (locker)
+            lock (Locker)
             {
                 IsCanceled = true;
             }
