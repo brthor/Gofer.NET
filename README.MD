@@ -73,7 +73,7 @@ public class Program
         taskClient.TaskQueue.Enqueue(() => RunTaskNow(aStr));
         
         var myCustom = new CustomClass {Value="Custom!"};
-        taskClient.TaskQueue.Enqueue(() => RunTaskNow(myCustom));
+        taskClient.TaskQueue.Enqueue(() => SampleAsyncFunc(myCustom));
         
         // Run a scheduled task at a defined interval
         taskClient.TaskScheduler.AddScheduledTask(() => ScheduledTask(), TimeSpan.FromSeconds(5), "scheduledTaskName");
@@ -81,6 +81,11 @@ public class Program
         // Start the task listener, effectively turning this node into a worker.
         // At least one listener is required for scheduled or enqueued jobs to run.
         taskClient.Listen();
+    }
+    
+    private async Task SampleAsyncFunc(object value) {
+        await Task.Delay(500);
+        Console.WriteLine(value.ToString());
     }
     
     private static void RunTaskNow(object value)

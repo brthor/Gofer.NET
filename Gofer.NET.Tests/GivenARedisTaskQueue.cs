@@ -75,8 +75,14 @@ namespace Gofer.NET.Tests
                 TC(() => NullableTypeFunc(now, semaphoreFile), now.ToString()),
                 TC(() => ArrayFunc1(new[] {"this", "string", "is"}, semaphoreFile), "this,string,is"),
                 TC(() => ArrayFunc2(new[] {1, 2, 3, 4}, semaphoreFile), "1,2,3,4"),
-                TC(() => ArrayFunc3(new int?[] {1, 2, 3, null, 5}, semaphoreFile), "1,2,3,null,5")
+                TC(() => ArrayFunc3(new int?[] {1, 2, 3, null, 5}, semaphoreFile), "1,2,3,null,5"),
+                
+                // Awaiting inside the lambda is unnecessary, as the method is extracted and serialized.
+#pragma warning disable 4014
+                TC(() => AsyncFunc(semaphoreFile), "async")
+#pragma warning restore 4014
             };
+            
 
             foreach (var tup in delgates)
             {
@@ -146,6 +152,14 @@ namespace Gofer.NET.Tests
                 File.ReadAllText(semaphoreFile).Should()
                     .Be(TaskQueueTestFixture.SemaphoreText);
             }
+        }
+
+        public async Task AsyncFunc(string semaphoreFile)
+        {
+            // Wait to ensure async waiting is happening.
+            await Task.Delay(1000);
+            
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, "async");
         }
         
         public void NullableTypeFunc(DateTime? dateTime, string semaphoreFile)
