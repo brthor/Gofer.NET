@@ -78,7 +78,6 @@ namespace Gofer.NET.Tests
                 TC(() => ArrayFunc3(new int?[] {1, 2, 3, null, 5}, semaphoreFile), "1,2,3,null,5"),
                 
                 // Awaiting inside the lambda is unnecessary, as the method is extracted and serialized.
-                TC(() => AsyncFunc(semaphoreFile).Wait(), "async"),
 #pragma warning disable 4014
                 TC(() => AsyncFunc(semaphoreFile), "async"),
                 TC(() => AsyncFuncThatReturnsString(semaphoreFile), "async")
