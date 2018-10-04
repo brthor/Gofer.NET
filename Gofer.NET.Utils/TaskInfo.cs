@@ -61,7 +61,7 @@ namespace Gofer.NET.Utils
                 return staticMethod.Invoke(null, Args);
             }
             
-            var instanceMethod = type.GetMethod(MethodName, 
+            var instanceMethod = type.GetMethod(MethodName,
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             
             if (instanceMethod == null)

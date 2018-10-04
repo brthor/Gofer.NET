@@ -59,29 +59,29 @@ namespace Gofer.NET
             }
         }
 
-        public void AddScheduledTask(Expression<Action> action, TimeSpan offsetFromNow, string taskName)
+        public async Task AddScheduledTask(Expression<Action> action, TimeSpan offsetFromNow, string taskName)
         {
-            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), offsetFromNow, _taskQueue.Backend, false, taskName));
+            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), offsetFromNow, _taskQueue.Backend, false, taskName));
         }
 
-        public void AddScheduledTask(Expression<Action> action, DateTimeOffset offsetFromNow, string taskName)
+        public async Task AddScheduledTask(Expression<Action> action, DateTimeOffset offsetFromNow, string taskName)
         {
-            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), offsetFromNow, _taskQueue.Backend, false, taskName));
+            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), offsetFromNow, _taskQueue.Backend, false, taskName));
         }
 
-        public void AddScheduledTask(Expression<Action> action, DateTime scheduledTime, string taskName)
+        public async Task AddScheduledTask(Expression<Action> action, DateTime scheduledTime, string taskName)
         {
-            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), scheduledTime, _taskQueue.Backend, false, taskName));
+            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), scheduledTime, _taskQueue.Backend, false, taskName));
         }
 
-        public void AddRecurringTask(Expression<Action> action, TimeSpan interval, string taskName)
+        public async Task AddRecurringTask(Expression<Action> action, TimeSpan interval, string taskName)
         {
-            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), interval, _taskQueue.Backend, true, taskName));
+            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), interval, _taskQueue.Backend, true, taskName));
         }
 
-        public void AddRecurringTask(Expression<Action> action, string crontab, string taskName)
+        public async Task AddRecurringTask(Expression<Action> action, string crontab, string taskName)
         {
-            AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), crontab, _taskQueue.Backend, taskName));
+            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), crontab, _taskQueue.Backend, taskName));
         }
 
         public void RemoveScheduledTask(string taskName)
@@ -94,10 +94,11 @@ namespace Gofer.NET
             RemoveTaskFromSchedule(_scheduledTasks[taskName]);
         }
 
-        private void AddTaskToSchedule(TaskSchedule taskSchedule)
+        private async Task AddTaskToSchedule(TaskSchedule taskSchedule)
         {
             _scheduledTasks[taskSchedule.TaskKey] = taskSchedule;
-            taskSchedule.ClearLastRunTime().Wait();
+            
+            await taskSchedule.ClearLastRunTime();
 
 //            var jsonTaskSchedule = JsonTaskInfoSerializer.Serialize(taskSchedule);
 //            _taskQueue.Backend.AddToList(ScheduleBackupKey, jsonTaskSchedule);
