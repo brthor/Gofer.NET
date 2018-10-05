@@ -70,10 +70,7 @@ namespace Gofer.NET
             IsRecurring = isRecurring;
         }
 
-        /// <summary>
-        /// Returns true if the task is run.
-        /// </summary>
-        public async Task<bool> RunIfScheduleReached()
+        public async Task<bool> IsScheduleReached()
         {
             var lastRunTime = await GetLastRunTime(LastRunValueKey);
 
@@ -84,7 +81,15 @@ namespace Gofer.NET
                 return true;
             }
 
-            if (TaskShouldExecuteBasedOnSchedule(lastRunTime ?? _startTime))
+            return TaskShouldExecuteBasedOnSchedule(lastRunTime ?? _startTime);
+        }
+
+        /// <summary>
+        /// Returns true if the task is run.
+        /// </summary>
+        public async Task<bool> RunIfScheduleReached()
+        {
+            if (await IsScheduleReached())
             {
                 await SetLastRunTime();
                 LogScheduledTaskRun();

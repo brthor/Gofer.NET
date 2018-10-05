@@ -19,7 +19,7 @@ namespace Gofer.NET.Tests
             var semaphoreFile = Path.GetTempFileName();
             File.Delete(semaphoreFile);
 
-            var taskScheduler = new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString), restoreFromBackup: false);
+            var taskScheduler = new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString));
 
             await configureSchedulerAction(semaphoreFile, taskScheduler);
             await taskScheduler.Tick();
@@ -42,13 +42,13 @@ namespace Gofer.NET.Tests
             taskScheduler.FlushBackupStorage();
         }
 
-        private async Task AssertTaskSchedulerWritesSemaphoreTwice(Func<string, TaskScheduler, Task> configureSchedulerAction)
+        private async Task AssertTaskSchedulerWritesSemaphoreTwice(
+            Func<string, TaskScheduler, Task> configureSchedulerAction)
         {
             var semaphoreFile = Path.GetTempFileName();
             File.Delete(semaphoreFile);
 
-            var taskScheduler = new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString), 
-                restoreFromBackup: false);
+            var taskScheduler = new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString));
 
             await configureSchedulerAction(semaphoreFile, taskScheduler);
             await taskScheduler.Tick();
@@ -131,11 +131,10 @@ namespace Gofer.NET.Tests
             await AssertTaskSchedulerWritesSemaphoreTwice(configureSchedulerAction);
         }
 
-        [Theory]
-        [InlineData("scheduled")]
-        [InlineData("recurring")]
-        public async Task ItExecutesTasksOnlyOnceWhenUsingMultipleConsumers(string taskType)
+        [Fact]
+        public async Task ItExecutesRecurringTaskTwiceWhenTaskTakesLongerThanSchedule()
         {
+            var queueName = Guid.NewGuid().ToString();
             var semaphoreFile = Path.GetTempFileName();
             File.Delete(semaphoreFile);
             File.Create(semaphoreFile).Close();
@@ -144,10 +143,57 @@ namespace Gofer.NET.Tests
 
             var taskSchedulers = new[]
             {
-                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString), restoreFromBackup:false),
-                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString), restoreFromBackup:false),
-                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString), restoreFromBackup:false),
-                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString), restoreFromBackup:false)
+                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, queueName)),
+                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, queueName)),
+            };
+
+            foreach (var taskScheduler in taskSchedulers)
+            {
+                await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphoreWithDelay(semaphoreFile, (intervalSeconds + 2) * 1000),
+                    TimeSpan.FromSeconds(intervalSeconds), RandomTaskName);
+            }
+            
+            Thread.Sleep(((intervalSeconds) * 1000) + 50);
+
+            // Ran only once
+            await Task.WhenAll(
+                taskSchedulers.Select(
+                    taskScheduler =>
+                        Task.Run(async () => await taskScheduler.Tick())));
+            
+            File.Exists(semaphoreFile).Should().Be(true);
+            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText);
+            
+            
+            // Ran only twice (or once if scheduled)
+            Thread.Sleep(((intervalSeconds) * 1000) + 50);
+            await Task.WhenAll(
+                taskSchedulers.Select(
+                    taskScheduler =>
+                        Task.Run(async () => await taskScheduler.Tick())));
+
+                File.ReadAllText(semaphoreFile).Should()
+                    .Be(TaskQueueTestFixture.SemaphoreText + TaskQueueTestFixture.SemaphoreText);
+        }
+
+        [Theory]
+        [InlineData("scheduled")]
+        [InlineData("recurring")]
+        public async Task ItExecutesTasksOnlyOnceWhenUsingMultipleConsumers(string taskType)
+        {
+            var queueName = Guid.NewGuid().ToString();
+            var semaphoreFile = Path.GetTempFileName();
+            File.Delete(semaphoreFile);
+            File.Create(semaphoreFile).Close();
+            
+            var intervalSeconds = 5;
+
+            var taskSchedulers = new[]
+            {
+                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, queueName)),
+                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, queueName)),
+                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, queueName)),
+                new TaskScheduler(TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, queueName))
             };
 
             foreach (var taskScheduler in taskSchedulers)
@@ -194,8 +240,6 @@ namespace Gofer.NET.Tests
                 File.ReadAllText(semaphoreFile).Should()
                     .Be(TaskQueueTestFixture.SemaphoreText);
             }
-
-            taskSchedulers[0].FlushBackupStorage();
         }
     }
 }

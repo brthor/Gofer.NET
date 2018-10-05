@@ -65,6 +65,13 @@ namespace Gofer.NET.Tests
             WriteSemaphoreValue(semaphoreFile, SemaphoreText);
         }
         
+        public static void WriteSemaphoreWithDelay(string semaphoreFile, int delayMs)
+        {
+            Thread.Sleep(delayMs);
+            
+            WriteSemaphoreValue(semaphoreFile, SemaphoreText);
+        }
+        
         public static void WriteSemaphoreValue(string semaphoreFile, object value)
         {
             try

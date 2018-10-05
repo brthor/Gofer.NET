@@ -22,12 +22,11 @@ namespace Gofer.NET
 
         public TaskClient(
             TaskQueue taskQueue, 
-            bool restoreScheduleFromBackup=false,
             Action<Exception> onError=null)
         {
             TaskQueue = taskQueue;
             OnError = onError;
-            TaskScheduler = new TaskScheduler(TaskQueue, restoreFromBackup: restoreScheduleFromBackup);
+            TaskScheduler = new TaskScheduler(TaskQueue);
             IsCanceled = false;
             
         }

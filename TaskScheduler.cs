@@ -10,21 +10,17 @@ namespace Gofer.NET
 {
     public class TaskScheduler
     {
-//        private string ScheduleBackupKey => $"{nameof(TaskSchedule)}::ScheduleBackupList";
+        private string SchedulePersistenceKey => 
+            $"{nameof(TaskSchedule)}::SchedulePersistenceList::{_taskQueue.Config.QueueName}";
 
         private readonly TaskQueue _taskQueue;
         private readonly Dictionary<string, TaskSchedule> _scheduledTasks;
 
-        public TaskScheduler(TaskQueue taskQueue, bool restoreFromBackup=false)
+        public TaskScheduler(TaskQueue taskQueue)
         {
             _taskQueue = taskQueue;
             
             _scheduledTasks = new Dictionary<string, TaskSchedule>();
-
-//            if (restoreFromBackup)
-//            {
-//                RestoreScheduledTasksFromStorage();
-//            }
         }
 
         public async Task Tick()
@@ -34,6 +30,10 @@ namespace Gofer.NET
             {
                 try
                 {
+                    var scheduleIsReached = await task.IsScheduleReached();
+                    if (!scheduleIsReached)
+                        continue;
+                    
                     // Ensure only one worker processes the scheduled task at a time.
                     var backendLock = await _taskQueue.Backend.LockNonBlocking(task.LockKey);
                     if (backendLock == null)
