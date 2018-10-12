@@ -16,8 +16,8 @@ namespace Gofer.NET
 
         private readonly DateTime _startTime;
         private readonly TaskInfo _taskInfo;
-        private readonly ITaskQueueBackend _backend;
         private readonly TimeSpan? _intervalOrOffsetFromNow;
+        private readonly TaskQueue _taskQueue;
         private readonly DateTimeOffset? _scheduledTimeAsDateTimeOffset;
         private readonly DateTime? _scheduledTime;
         private readonly string _crontab;
@@ -27,8 +27,8 @@ namespace Gofer.NET
         public TaskSchedule(
             TaskInfo taskInfo,
             TimeSpan interval,
-            ITaskQueueBackend backend,
-            bool isRecurring, string taskId) : this(taskInfo, backend, isRecurring, taskId)
+            TaskQueue taskQueue,
+            bool isRecurring, string taskId) : this(taskInfo, taskQueue, isRecurring, taskId)
         {
             _intervalOrOffsetFromNow = interval;
         }
@@ -36,8 +36,8 @@ namespace Gofer.NET
         public TaskSchedule(
             TaskInfo taskInfo,
             DateTimeOffset scheduledTimeAsDateTimeOffset,
-            ITaskQueueBackend backend,
-            bool isRecurring, string taskId) : this(taskInfo, backend, isRecurring, taskId)
+            TaskQueue taskQueue,
+            bool isRecurring, string taskId) : this(taskInfo, taskQueue, isRecurring, taskId)
         {
             _scheduledTimeAsDateTimeOffset = scheduledTimeAsDateTimeOffset;
         }
@@ -45,8 +45,8 @@ namespace Gofer.NET
         public TaskSchedule(
             TaskInfo taskInfo,
             DateTime scheduledTime,
-            ITaskQueueBackend backend,
-            bool isRecurring, string taskId) : this(taskInfo, backend, isRecurring, taskId)
+            TaskQueue taskQueue,
+            bool isRecurring, string taskId) : this(taskInfo, taskQueue, isRecurring, taskId)
         {
             _scheduledTime =  scheduledTime;
         }
@@ -54,17 +54,17 @@ namespace Gofer.NET
         public TaskSchedule(
             TaskInfo taskInfo,
             string crontab,
-            ITaskQueueBackend backend, string taskKey) : this(taskInfo, backend, true, taskKey)
+            TaskQueue taskQueue, string taskKey) : this(taskInfo, taskQueue, true, taskKey)
         {
             ValidateCrontab(crontab);
             _crontab = crontab;
         }
 
-        private TaskSchedule(TaskInfo taskInfo, ITaskQueueBackend backend, bool isRecurring, string taskKey)
+        private TaskSchedule(TaskInfo taskInfo, TaskQueue taskQueue, bool isRecurring, string taskKey)
         {
-            _backend = backend;
             _taskInfo = taskInfo;
             _startTime = DateTime.UtcNow;
+            _taskQueue = taskQueue;
 
             TaskKey = taskKey;
             IsRecurring = isRecurring;
@@ -89,7 +89,7 @@ namespace Gofer.NET
                 await SetLastRunTime();
                 LogScheduledTaskRun();
 
-                await _taskInfo.ExecuteTask();
+                await _taskQueue.Enqueue(_taskInfo);
                 return true;
             }
 
@@ -136,7 +136,7 @@ namespace Gofer.NET
         /// </summary>
         private async Task<DateTime?> GetLastRunTime(string lastRunValueKey)
         {
-            var jsonString = await _backend.GetString(lastRunValueKey);
+            var jsonString = await _taskQueue.Backend.GetString(lastRunValueKey);
 
             if (string.IsNullOrEmpty(jsonString))
             {
@@ -151,7 +151,7 @@ namespace Gofer.NET
         /// </summary>
         private async Task SetLastRunTime()
         {
-            await _backend.SetString(LastRunValueKey, JsonConvert.SerializeObject(DateTime.UtcNow));
+            await _taskQueue.Backend.SetString(LastRunValueKey, JsonConvert.SerializeObject(DateTime.UtcNow));
         }
 
         private void LogScheduledTaskRun()
@@ -159,7 +159,7 @@ namespace Gofer.NET
             var intervalString = _intervalOrOffsetFromNow?.ToString() ??
                                  _scheduledTimeAsDateTimeOffset?.ToString() ?? _scheduledTime?.ToString() ?? _crontab;
 
-            Console.WriteLine($"Running Scheduled Task with interval: {intervalString}");
+            Console.WriteLine($"Queueing Scheduled Task for run with interval: {intervalString}");
         }
 
         private void ValidateCrontab(string crontab)
@@ -180,7 +180,7 @@ namespace Gofer.NET
         /// </summary>
         public async Task ClearLastRunTime()
         {
-            await _backend.DeleteKey(LastRunValueKey);
+            await _taskQueue.Backend.DeleteKey(LastRunValueKey);
         }
     }
 }

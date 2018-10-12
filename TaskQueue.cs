@@ -34,7 +34,7 @@ namespace Gofer.NET
             await Enqueue(taskInfo);
         }
         
-        private async Task Enqueue(TaskInfo taskInfo)
+        internal async Task Enqueue(TaskInfo taskInfo)
         {
             var jsonString = JsonTaskInfoSerializer.Serialize(taskInfo);
 
