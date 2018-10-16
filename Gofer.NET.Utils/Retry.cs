@@ -3,11 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace Gofer.NET
+namespace Gofer.NET.Utils
 {
     public static class Retry
     {
-        public static void OnException(Action action, Type[] handledExceptions, int retryCount=10, int startingDelay=100, int backoffFactor=2)
+        /// <summary>
+        /// Retry the specified action if any of the handled exceptions occur.
+        /// </summary>
+        /// <param name="action">Action which should be retried on specified exceptions.</param>
+        /// <param name="handledExceptions">List of handled exception types.</param>
+        /// <param name="retryCount">How many times to retry.</param>
+        /// <param name="initialDelayBetweenRetries">Number of milliseconds to wait between retries.</param>
+        /// <param name="backoffFactor">initialDelayBetweenRetries multiplied by this amount each retry</param>
+        /// <param name="backoffVariance">A random number between 0 and backoffVariance is added to backoffFactor when calculating delay.</param>
+        public static void OnException(Action action, Type[] handledExceptions, int retryCount = 10,
+            int initialDelayBetweenRetries = 100, int backoffFactor = 2, double backoffVariance=0.2)
         {
             var pseudoFunc = new Func<object>(() =>
             {
@@ -18,10 +28,19 @@ namespace Gofer.NET
             OnException(pseudoFunc, handledExceptions, retryCount);
         }
         
-        public static T OnException<T>(Func<T> func, Type[] handledExceptions, 
-            int retryCount=10, int startingDelay=100, int backoffFactor=2, double backoffVariance=0.2)
+        /// <summary>
+        /// Retry the specified action if any of the handled exceptions occur.
+        /// </summary>
+        /// <param name="func">Action which should be retried on specified exceptions.</param>
+        /// <param name="handledExceptions">List of handled exception types.</param>
+        /// <param name="retryCount">How many times to retry.</param>
+        /// <param name="initialDelayBetweenRetries">Number of milliseconds to wait between retries.</param>
+        /// <param name="backoffFactor">initialDelayBetweenRetries multiplied by this amount each retry</param>
+        /// <param name="backoffVariance">A random number between 0 and backoffVariance is added to backoffFactor when calculating delay.</param>
+        public static T OnException<T>(Func<T> func, Type[] handledExceptions, int retryCount=10, 
+            int initialDelayBetweenRetries=100, int backoffFactor=2, double backoffVariance=0.2)
         {
-            var delay = startingDelay;
+            var delay = initialDelayBetweenRetries;
             
             for (var retry = 1; retry <= retryCount; ++retry)
             {
