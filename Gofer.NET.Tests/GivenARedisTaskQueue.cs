@@ -21,6 +21,8 @@ namespace Gofer.NET.Tests
                 return Value;
             }
         }
+        
+        private class CustomException : Exception {}
 
         [Fact]
         public async Task ItCapturesArgumentsPassedToEnqueuedDelegate()
@@ -41,6 +43,10 @@ namespace Gofer.NET.Tests
             // Action to expected result
             var delgates = new Tuple<Expression<Action>, string>[]
             {
+                // Exception Argument
+                TC(() => ExceptionFunc(new Exception(), semaphoreFile), new Exception().ToString()),
+                TC(() => ExceptionFunc(new CustomException(), semaphoreFile), new CustomException().ToString()),
+                
                 // Integer Arguments
                 TC(() => IntFunc(int.MaxValue, semaphoreFile), int.MaxValue.ToString()),
                 TC(() => IntFunc(int.MinValue, semaphoreFile), int.MinValue.ToString()),
@@ -221,6 +227,11 @@ namespace Gofer.NET.Tests
         public void ObjectFunc(object num, string semaphoreFile)
         {
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
+        }
+
+        public void ExceptionFunc(Exception exc, string semaphoreFile)
+        {
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, exc);
         }
         
         public void ArrayFunc1(string[] nums, string semaphoreFile)
