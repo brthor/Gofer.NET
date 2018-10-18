@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using Newtonsoft.Json;
 
 namespace Gofer.NET.Utils
 {
@@ -15,7 +16,9 @@ namespace Gofer.NET.Utils
             {
                 TypeNameHandling = TypeNameHandling.All
             };
+
             settings.Converters.Insert(0, new JsonPrimitiveConverter());
+            settings.Converters.Insert(1, new ExceptionConverter());
             
             var jsonString = JsonConvert.SerializeObject(obj, settings);
 
@@ -39,6 +42,7 @@ namespace Gofer.NET.Utils
                 TypeNameHandling = TypeNameHandling.All
             };
             settings.Converters.Insert(0, new JsonPrimitiveConverter());
+            settings.Converters.Insert(1, new ExceptionConverter());
 
             var obj = JsonConvert.DeserializeObject<T>(jsonString, settings);
             return obj;

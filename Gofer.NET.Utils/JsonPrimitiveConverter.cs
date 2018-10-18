@@ -5,17 +5,12 @@ namespace Gofer.NET.Utils
 {
     public class JsonPrimitiveConverter : JsonConverter
     {
-
-        public override bool CanRead
-        {
-            get { return false; }
-        }
+        public override bool CanRead => false;
 
         public override bool CanConvert(Type objectType)
         {
             return objectType.IsPrimitive;
         }
-
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
