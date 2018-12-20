@@ -36,6 +36,7 @@ namespace Gofer.NET
         
         internal async Task Enqueue(TaskInfo taskInfo)
         {
+            taskInfo.ConvertTypeArgs();
             var jsonString = JsonTaskInfoSerializer.Serialize(taskInfo);
 
             await Backend.Enqueue(jsonString);
@@ -74,6 +75,7 @@ namespace Gofer.NET
             }
             
             var taskInfo = JsonTaskInfoSerializer.Deserialize(jsonString);
+            taskInfo.UnconvertTypeArgs();
             return Tuple.Create(jsonString, taskInfo);
         }
         
@@ -86,6 +88,7 @@ namespace Gofer.NET
             }
             
             var taskInfo = JsonTaskInfoSerializer.Deserialize(jsonString);
+            taskInfo.UnconvertTypeArgs();
             return taskInfo;
         }
 
