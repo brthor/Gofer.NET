@@ -30,6 +30,9 @@ namespace Gofer.NET.Utils
         public void ConvertTypeArgs() 
         {
             for (var i=0;i<Args.Length;++i) {
+                if (Args[i] == null)
+                    continue;
+
                 if (typeof(Type).IsAssignableFrom(Args[i].GetType())) {
                     Args[i] = new TypeWrapper {Type=(Type)Args[i]};
                 }
@@ -39,6 +42,9 @@ namespace Gofer.NET.Utils
         public void UnconvertTypeArgs() 
         {
             for (var i=0;i<Args.Length;++i) {
+                if (Args[i] == null)
+                    continue;
+                    
                 if (typeof(TypeWrapper).IsAssignableFrom(Args[i].GetType())) {
                     Args[i] = ((TypeWrapper) Args[i]).Type;
                 }
