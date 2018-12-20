@@ -82,6 +82,10 @@ namespace Gofer.NET.Tests
                 TC(() => ArrayFunc1(new[] {"this", "string", "is"}, semaphoreFile), "this,string,is"),
                 TC(() => ArrayFunc2(new[] {1, 2, 3, 4}, semaphoreFile), "1,2,3,4"),
                 TC(() => ArrayFunc3(new int?[] {1, 2, 3, null, 5}, semaphoreFile), "1,2,3,null,5"),
+
+                TC(() => TypeFunc(typeof(object), semaphoreFile), typeof(object).ToString()),
+                TC(() => TypeFunc(typeof(GivenARedisTaskQueue), semaphoreFile), typeof(GivenARedisTaskQueue).ToString()),
+                TC(() => TypeFunc(null, semaphoreFile), "null"),
                 
                 // Awaiting inside the lambda is unnecessary, as the method is extracted and serialized.
 #pragma warning disable 4014
@@ -232,6 +236,11 @@ namespace Gofer.NET.Tests
         public void ExceptionFunc(Exception exc, string semaphoreFile)
         {
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, exc);
+        }
+
+        public void TypeFunc(Type typeArg, string semaphoreFile)
+        {
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, typeArg?.ToString() ?? "null");
         }
         
         public void ArrayFunc1(string[] nums, string semaphoreFile)

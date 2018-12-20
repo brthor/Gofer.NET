@@ -14,7 +14,8 @@ namespace Gofer.NET.Utils
         {
             var settings = new JsonSerializerSettings
             {
-                TypeNameHandling = TypeNameHandling.All
+                TypeNameHandling = TypeNameHandling.All,
+                TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Full
             };
 
             settings.Converters.Insert(0, new JsonPrimitiveConverter());
@@ -39,7 +40,8 @@ namespace Gofer.NET.Utils
             
             var settings = new JsonSerializerSettings
             {
-                TypeNameHandling = TypeNameHandling.All
+                TypeNameHandling = TypeNameHandling.All,
+                TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Full
             };
             settings.Converters.Insert(0, new JsonPrimitiveConverter());
             settings.Converters.Insert(1, new ExceptionConverter());

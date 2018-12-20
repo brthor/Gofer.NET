@@ -27,6 +27,30 @@ namespace Gofer.NET.Utils
             return CreatedAtUtc < (DateTime.UtcNow - expirationSpan);
         }
 
+        public void ConvertTypeArgs() 
+        {
+            for (var i=0;i<Args.Length;++i) {
+                if (Args[i] == null)
+                    continue;
+
+                if (typeof(Type).IsAssignableFrom(Args[i].GetType())) {
+                    Args[i] = new TypeWrapper {Type=(Type)Args[i]};
+                }
+            }
+        }
+
+        public void UnconvertTypeArgs() 
+        {
+            for (var i=0;i<Args.Length;++i) {
+                if (Args[i] == null)
+                    continue;
+                    
+                if (typeof(TypeWrapper).IsAssignableFrom(Args[i].GetType())) {
+                    Args[i] = ((TypeWrapper) Args[i]).Type;
+                }
+            }
+        }
+
         public async Task<object> ExecuteTask()
         {
             var assembly = Assembly.Load(AssemblyName);
