@@ -85,6 +85,7 @@ namespace Gofer.NET.Tests
 
                 TC(() => TypeFunc(typeof(object), semaphoreFile), typeof(object).ToString()),
                 TC(() => TypeFunc(typeof(GivenARedisTaskQueue), semaphoreFile), typeof(GivenARedisTaskQueue).ToString()),
+                TC(() => TypeFunc(null, semaphoreFile), "null"),
                 
                 // Awaiting inside the lambda is unnecessary, as the method is extracted and serialized.
 #pragma warning disable 4014
@@ -239,7 +240,7 @@ namespace Gofer.NET.Tests
 
         public void TypeFunc(Type typeArg, string semaphoreFile)
         {
-            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, typeArg.ToString());
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, typeArg?.ToString() ?? "null");
         }
         
         public void ArrayFunc1(string[] nums, string semaphoreFile)
