@@ -237,7 +237,7 @@ namespace Gofer.NET.Tests
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, exc);
         }
 
-        public void ArrayFunc1(Type typeArg, string semaphoreFile)
+        public void TypeFunc(Type typeArg, string semaphoreFile)
         {
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, typeArg.ToString());
         }
