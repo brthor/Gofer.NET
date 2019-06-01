@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using NCrontab;
 using Newtonsoft.Json.Bson;
 using Xunit;
 
@@ -12,73 +13,8 @@ namespace Gofer.NET.Tests
     public class GivenATaskScheduler
     {
         private int IntervalSeconds => 2;
+
         private string RandomTaskName = Guid.NewGuid().ToString();
-
-        private async Task AssertTaskSchedulerWritesSemaphoreOnlyOnce(Func<string, TaskScheduler, Task> configureSchedulerAction)
-        {
-            var semaphoreFile = Path.GetTempFileName();
-            File.Delete(semaphoreFile);
-
-            var taskQueue = TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, 
-                queueName: Guid.NewGuid().ToString());
-            var taskScheduler = new TaskScheduler(taskQueue);
-
-            await configureSchedulerAction(semaphoreFile, taskScheduler);
-            await taskScheduler.Tick();
-            await taskQueue.ExecuteNext();
-
-            File.Exists(semaphoreFile).Should().Be(false);
-
-            // Confirm Scheduled Task Ran once
-            Thread.Sleep(((IntervalSeconds) * 1000) + 10);
-            await taskScheduler.Tick();
-            await taskQueue.ExecuteNext();
-            File.Exists(semaphoreFile).Should().Be(true);
-            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText);
-
-            // Confirm Ran ONLY Once
-            Thread.Sleep(((IntervalSeconds) * 1000) + 10);
-            await taskScheduler.Tick();
-            await taskQueue.ExecuteNext();
-            File.Exists(semaphoreFile).Should().Be(true);
-            File.ReadAllText(semaphoreFile).Should()
-                .Be(TaskQueueTestFixture.SemaphoreText);
-
-            taskScheduler.FlushBackupStorage();
-        }
-
-        private async Task AssertTaskSchedulerWritesSemaphoreTwice(Func<string, TaskScheduler, Task> configureSchedulerAction)
-        {
-            var semaphoreFile = Path.GetTempFileName();
-            File.Delete(semaphoreFile);
-            
-            var taskQueue = TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, 
-                queueName: Guid.NewGuid().ToString());
-            var taskScheduler = new TaskScheduler(taskQueue);
-
-            await configureSchedulerAction(semaphoreFile, taskScheduler);
-            await taskScheduler.Tick();
-            await taskQueue.ExecuteNext();
-
-            File.Exists(semaphoreFile).Should().Be(false);
-
-            // Confirm Scheduled Task Ran once
-            Thread.Sleep(((IntervalSeconds) * 1000) + 10);
-            await taskScheduler.Tick();
-            await taskQueue.ExecuteNext();
-            File.Exists(semaphoreFile).Should().Be(true);
-            File.ReadAllText(semaphoreFile).Should().Be(TaskQueueTestFixture.SemaphoreText);
-
-            // Confirm Ran Twice
-            Thread.Sleep(((IntervalSeconds) * 1000) + 10);
-            await taskScheduler.Tick();
-            await taskQueue.ExecuteNext();
-            File.Exists(semaphoreFile).Should().Be(true);
-            File.ReadAllText(semaphoreFile).Should()
-                .Be(TaskQueueTestFixture.SemaphoreText + TaskQueueTestFixture.SemaphoreText);
-
-            taskScheduler.FlushBackupStorage();
-        }
 
         [Fact]
         public async Task ItExecutesAScheduledTaskAtTheSpecifiedOffsetOnlyOnce()
@@ -86,10 +22,12 @@ namespace Gofer.NET.Tests
             Func<string, TaskScheduler, Task> configureSchedulerAction = async (semaphoreFile, taskScheduler) =>
             {
                 await taskScheduler.AddScheduledTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
-                    TimeSpan.FromSeconds(IntervalSeconds), RandomTaskName);
+                    TimeSpan.FromSeconds(IntervalSeconds));
             };
 
-            await AssertTaskSchedulerWritesSemaphoreOnlyOnce(configureSchedulerAction);
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerWritesSemaphoreOnlyOnce(
+                IntervalSeconds,
+                configureSchedulerAction);
         }
 
         [Fact]
@@ -98,10 +36,12 @@ namespace Gofer.NET.Tests
             Func<string, TaskScheduler, Task> configureSchedulerAction = async (semaphoreFile, taskScheduler) =>
             {
                 await taskScheduler.AddScheduledTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
-                    new DateTimeOffset(DateTime.UtcNow + TimeSpan.FromSeconds(IntervalSeconds), TimeSpan.FromHours(0)), RandomTaskName);
+                    new DateTimeOffset(DateTime.UtcNow + TimeSpan.FromSeconds(IntervalSeconds), TimeSpan.FromHours(0)));
             };
 
-            await AssertTaskSchedulerWritesSemaphoreOnlyOnce(configureSchedulerAction);
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerWritesSemaphoreOnlyOnce(
+                IntervalSeconds,
+                configureSchedulerAction);
         }
 
         [Fact]
@@ -110,10 +50,12 @@ namespace Gofer.NET.Tests
             Func<string, TaskScheduler, Task> configureSchedulerAction = async (semaphoreFile, taskScheduler) =>
             {
                 await taskScheduler.AddScheduledTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
-                    DateTime.UtcNow + TimeSpan.FromSeconds(IntervalSeconds), RandomTaskName);
+                    DateTime.UtcNow + TimeSpan.FromSeconds(IntervalSeconds));
             };
 
-            await AssertTaskSchedulerWritesSemaphoreOnlyOnce(configureSchedulerAction);
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerWritesSemaphoreOnlyOnce(
+                IntervalSeconds,
+                configureSchedulerAction);
         }
 
         [Fact]
@@ -125,7 +67,9 @@ namespace Gofer.NET.Tests
                     TimeSpan.FromSeconds(IntervalSeconds), RandomTaskName);
             };
 
-            await AssertTaskSchedulerWritesSemaphoreTwice(configureSchedulerAction);
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerWritesSemaphoreTwice(
+                IntervalSeconds,
+                configureSchedulerAction);
         }
 
         [Fact]
@@ -133,11 +77,203 @@ namespace Gofer.NET.Tests
         {
             Func<string, TaskScheduler, Task> configureSchedulerAction = async (semaphoreFile, taskScheduler) =>
             {
+                var crontab = $"*/{IntervalSeconds} * * * * *";
+                TaskSchedulerTestHelpers.SynchronizeToCrontabNextStart(crontab);
+                Thread.Sleep(10);
+
                 await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
-                    $"*/{IntervalSeconds} * * * * *", RandomTaskName);
+                    crontab, RandomTaskName);
             };
 
-            await AssertTaskSchedulerWritesSemaphoreTwice(configureSchedulerAction);
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerWritesSemaphoreTwice(IntervalSeconds, 
+                configureSchedulerAction);
+        }
+
+        [Fact]
+        public async Task ItAllowsForRecurringTaskCrontabSchedulesToBeChanged()
+        {
+            var taskName = Guid.NewGuid().ToString();
+
+            Func<string, TaskScheduler, Task> configureSchedulerAction = async (semaphoreFile, taskScheduler) =>
+            {
+                var crontab = $"*/{IntervalSeconds} * * * * *";
+                TaskSchedulerTestHelpers.SynchronizeToCrontabNextStart(crontab);
+                Thread.Sleep(10);
+
+                await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
+                    crontab, taskName);
+            };
+
+            Func<string, TaskScheduler, Task> reconfigureRecurringTaskIntervalAction = async (semaphoreFile, taskScheduler) => 
+            {
+                // Must synchronize to next start time or test becomes flaky
+                var newCrontab = $"*/{IntervalSeconds*2} * * * * *";
+                TaskSchedulerTestHelpers.SynchronizeToCrontabNextStart(newCrontab);
+                Thread.Sleep(10);
+
+                await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
+                    newCrontab, taskName);
+            };
+
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerWritesSemaphoreTwiceAfterReconfiguringInterval(
+                IntervalSeconds,
+                configureSchedulerAction,
+                reconfigureRecurringTaskIntervalAction);
+        }
+
+        [Fact]
+        public async Task ItAllowsForRecurringTaskTimespanSchedulesToBeChanged()
+        {
+            var taskName = Guid.NewGuid().ToString();
+
+            Func<string, TaskScheduler, Task> configureSchedulerAction = async (semaphoreFile, taskScheduler) =>
+            {
+                await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
+                    TimeSpan.FromSeconds(IntervalSeconds), taskName);
+            };
+
+            Func<string, TaskScheduler, Task> reconfigureRecurringTaskIntervalAction = async (semaphoreFile, taskScheduler) => 
+            {
+                await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
+                    TimeSpan.FromSeconds(IntervalSeconds*2), taskName);
+            };
+
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerWritesSemaphoreTwiceAfterReconfiguringInterval(
+                IntervalSeconds,
+                configureSchedulerAction,
+                reconfigureRecurringTaskIntervalAction);
+        }
+
+        [Fact]
+        public async Task ItAllowsForRecurringTasksTaskInfoToBeChanged()
+        {
+            var taskName = Guid.NewGuid().ToString();
+            var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
+            var taskScheduler = new TaskScheduler(taskQueue);
+
+            var recurringTask = await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore("afile"),
+                    $"*/{IntervalSeconds} * * * * *", taskName);
+
+            var fetchedRecurringTask = await taskScheduler.GetRecurringTask(recurringTask.TaskKey);
+            fetchedRecurringTask.TaskInfo.MethodName.Should().Be("WriteSemaphore");
+            fetchedRecurringTask.Interval.Should().BeNull();
+            fetchedRecurringTask.Crontab.Should().Be($"*/{IntervalSeconds} * * * * *");
+            fetchedRecurringTask.TaskInfo.Args[0].Should().Be("afile");
+
+            // Different Argument
+            await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore("bfile"),
+                    $"*/{IntervalSeconds} * * * * *", taskName);
+
+            fetchedRecurringTask = await taskScheduler.GetRecurringTask(recurringTask.TaskKey);
+            fetchedRecurringTask.TaskInfo.MethodName.Should().Be("WriteSemaphore");
+            fetchedRecurringTask.Interval.Should().BeNull();
+            fetchedRecurringTask.Crontab.Should().Be($"*/{IntervalSeconds} * * * * *");
+            fetchedRecurringTask.TaskInfo.Args[0].Should().Be("bfile");
+
+            // Different Interval
+            await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore("bfile"),
+                    TimeSpan.FromSeconds(IntervalSeconds), taskName);
+
+            fetchedRecurringTask = await taskScheduler.GetRecurringTask(recurringTask.TaskKey);
+            fetchedRecurringTask.TaskInfo.MethodName.Should().Be("WriteSemaphore");
+            fetchedRecurringTask.Interval.Should().Be(TimeSpan.FromSeconds(IntervalSeconds));
+            fetchedRecurringTask.Crontab.Should().BeNull();
+            fetchedRecurringTask.TaskInfo.Args[0].Should().Be("bfile");
+
+            // Different Target Method
+            await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphoreValue("bfile", "avalue"),
+                    TimeSpan.FromSeconds(IntervalSeconds), taskName);
+
+            fetchedRecurringTask = await taskScheduler.GetRecurringTask(recurringTask.TaskKey);
+            fetchedRecurringTask.TaskInfo.MethodName.Should().Be("WriteSemaphoreValue");
+            fetchedRecurringTask.Interval.Should().Be(TimeSpan.FromSeconds(IntervalSeconds));
+            fetchedRecurringTask.Crontab.Should().BeNull();
+            fetchedRecurringTask.TaskInfo.Args[0].Should().Be("bfile");
+            fetchedRecurringTask.TaskInfo.Args[1].Should().Be("avalue");
+        }
+
+        [Fact]
+        public async Task ItAllowsForRecurringTasksToBeCanceled()
+        {
+            var taskName = Guid.NewGuid().ToString();
+            RecurringTask recurringTask = null;
+
+            Func<string, TaskScheduler, Task> configureSchedulerAction = async (semaphoreFile, taskScheduler) =>
+            {
+                recurringTask = await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
+                    $"*/{IntervalSeconds} * * * * *", taskName);
+            };
+
+            Func<TaskScheduler, Task> cancelTaskAction = async (taskScheduler) => 
+            {
+                (await taskScheduler.CancelRecurringTask(recurringTask)).Should().BeTrue();
+            };
+
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerDoesNotWriteSemaphore(
+                IntervalSeconds,
+                configureSchedulerAction,
+                cancelTaskAction);
+        }
+
+        [Fact]
+        public async Task ItAllowsForScheduledTasksToBeCanceled()
+        {
+            var taskName = Guid.NewGuid().ToString();
+            ScheduledTask scheduledTask = null;
+
+            Func<string, TaskScheduler, Task> configureSchedulerAction = async (semaphoreFile, taskScheduler) =>
+            {
+                scheduledTask = await taskScheduler.AddScheduledTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
+                    DateTime.UtcNow + TimeSpan.FromSeconds(IntervalSeconds));
+            };
+
+            Func<TaskScheduler, Task> cancelTaskAction = async (taskScheduler) => 
+            {
+                (await taskScheduler.CancelScheduledTask(scheduledTask)).Should().BeTrue();
+            };
+
+            await TaskSchedulerTestHelpers.AssertTaskSchedulerDoesNotWriteSemaphore(
+                IntervalSeconds,
+                configureSchedulerAction,
+                cancelTaskAction);
+        }
+
+        [Fact]
+        public async Task ItDoesNotBlowUpWhenCancelingNonExistentTasks()
+        {
+            var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
+            var taskScheduler = new TaskScheduler(taskQueue);
+
+            (await taskScheduler.CancelTask("hello")).Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task ItReturnsNullWhenGettingNonExistentRecurringTasks()
+        { 
+            var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
+            var taskScheduler = new TaskScheduler(taskQueue);
+            
+            (await taskScheduler.GetRecurringTask("hello")).Should().BeNull();
+        }
+
+        [Fact]
+        public async Task ItDoesNotOverwriteOriginalRecurringTaskWhenDuplicatesAreAdded()
+        {
+            var taskName = Guid.NewGuid().ToString();
+            var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
+            var taskScheduler = new TaskScheduler(taskQueue);
+
+            var originalRecurringTask = await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore("a"),
+                    TimeSpan.FromSeconds(IntervalSeconds), taskName);
+
+            var duplicateRecurringTask = await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore("a"),
+                    TimeSpan.FromSeconds(IntervalSeconds), taskName);
+
+            originalRecurringTask.Should().NotBeNull();
+            duplicateRecurringTask.Should().BeNull();
+
+            var recurringTask = await taskScheduler.GetRecurringTask(originalRecurringTask.TaskKey);
+            recurringTask.StartTime.Should().Be(originalRecurringTask.StartTime);
         }
 
         [Theory]
@@ -150,8 +286,9 @@ namespace Gofer.NET.Tests
             File.Create(semaphoreFile).Close();
             
             var intervalSeconds = 5;
-            var taskQueue = TaskQueue.Redis(TaskQueueTestFixture.RedisConnectionString, 
-                queueName: Guid.NewGuid().ToString());
+            var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
+
+            var schedulingTaskScheduler = new TaskScheduler(taskQueue);
             
             var taskSchedulers = new[]
             {
@@ -161,19 +298,16 @@ namespace Gofer.NET.Tests
                 new TaskScheduler(taskQueue),
             };
 
-            foreach (var taskScheduler in taskSchedulers)
+            if (taskType == "scheduled")
             {
-                if (taskType == "scheduled")
-                {
-                    await taskScheduler.AddScheduledTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
-                        TimeSpan.FromSeconds(intervalSeconds), RandomTaskName);
-                }
+                await schedulingTaskScheduler.AddScheduledTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
+                    TimeSpan.FromSeconds(intervalSeconds));
+            }
 
-                if (taskType == "recurring")
-                {
-                    await taskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
-                        TimeSpan.FromSeconds(intervalSeconds), RandomTaskName);
-                }
+            if (taskType == "recurring")
+            {
+                await schedulingTaskScheduler.AddRecurringTask(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile),
+                    TimeSpan.FromSeconds(intervalSeconds), RandomTaskName);
             }
             
             Thread.Sleep(((intervalSeconds) * 1000) + 50);
@@ -213,8 +347,6 @@ namespace Gofer.NET.Tests
                 File.ReadAllText(semaphoreFile).Should()
                     .Be(TaskQueueTestFixture.SemaphoreText);
             }
-
-            taskSchedulers[0].FlushBackupStorage();
         }
     }
 }

@@ -7,8 +7,6 @@ namespace Gofer.NET
     {
         public string QueueName { get; set; }
         
-//        public string BackupQueueName { get; set; }
-        
         /// <summary>
         /// If a task is not removed from the backup list after this long, it is assumed to have been abandoned or its
         /// consumer died. It will be reinserted into the processing queue.
@@ -24,17 +22,17 @@ namespace Gofer.NET
         /// https://stackexchange.github.io/StackExchange.Redis/Timeouts#are-you-seeing-high-number-of-busyio-or-busyworker-threads-in-the-timeout-exception
         /// </summary>
         public bool ThreadSafe { get; set; }
-        
-//        public ITaskInfoSerializer TaskInfoSerializer { get; set; }
+
+        public int BatchSize { get; set; }
         
         public static TaskQueueConfiguration Default()
         {
             return new TaskQueueConfiguration
             {
                 QueueName = "Gofer.NET.Default",
-//                BackupQueueName = "Gofer.NET.Backup.Default",
                 ThreadSafe = true,
                 MessageRetryTimeSpan = TimeSpan.FromHours(1),
+                BatchSize = 20
             };
         }
     }

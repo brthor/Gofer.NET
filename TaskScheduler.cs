@@ -10,122 +10,360 @@ namespace Gofer.NET
 {
     public class TaskScheduler
     {
-//        private string ScheduleBackupKey => $"{nameof(TaskSchedule)}::ScheduleBackupList";
+        private string TaskBackendKeySetPersistenceKey => 
+            $"{nameof(TaskScheduler)}::{nameof(TaskBackendKeySetPersistenceKey)}::{_taskQueue.Config.QueueName}";
+
+        private string ScheduledTasksOrderedSetKey => 
+            $"{nameof(TaskScheduler)}::{nameof(ScheduledTasksOrderedSetKey)}::{_taskQueue.Config.QueueName}";
+
+        private string ScheduledTasksMapKey => 
+            $"{nameof(TaskScheduler)}::{nameof(ScheduledTasksMapKey)}::{_taskQueue.Config.QueueName}";
+
+        private string ScheduledTaskPromotionLockKey => 
+            $"{nameof(TaskScheduler)}::{nameof(ScheduledTaskPromotionLockKey)}::{_taskQueue.Config.QueueName}";
+
+        private string RecurringTaskRescheduleQueueKey => 
+            $"{nameof(TaskScheduler)}::{nameof(RecurringTaskRescheduleQueueKey)}::{_taskQueue.Config.QueueName}";
+
+        private LoadedLuaScript LoadedScheduledTaskPromotionScript { get; set; }
+
+        private LoadedLuaScript LoadedRescheduleRecurringTasksScript { get; set; }
+
+        private LoadedLuaScript LoadedCancelTaskScript { get; set; }
 
         private readonly TaskQueue _taskQueue;
-        private readonly Dictionary<string, TaskSchedule> _scheduledTasks;
 
-        public TaskScheduler(TaskQueue taskQueue, bool restoreFromBackup=false)
+        private readonly TimeSpan _promotionFrequency;
+
+        private DateTime _lastPromotionRunTime;
+
+        public TaskScheduler(TaskQueue taskQueue, TimeSpan? updateFrequency=null)
         {
             _taskQueue = taskQueue;
-            
-            _scheduledTasks = new Dictionary<string, TaskSchedule>();
-
-//            if (restoreFromBackup)
-//            {
-//                RestoreScheduledTasksFromStorage();
-//            }
+            _promotionFrequency = updateFrequency ?? TimeSpan.FromMilliseconds(100);
         }
 
-        public async Task Tick()
+        public async Task Tick(bool forceRunPromotion=false)
         {
-            var tasks = _scheduledTasks.Values.ToList();
-            foreach (var task in tasks)
+            if (forceRunPromotion || ShouldRunScheduledTaskPromotion()) 
             {
-                try
-                {
-                    // Ensure only one worker processes the scheduled task at a time.
-                    var backendLock = await _taskQueue.Backend.LockNonBlocking(task.LockKey);
-                    if (backendLock == null)
-                        continue;
+                // Update the last run time whether or not we get the lock.
+                _lastPromotionRunTime = DateTime.UtcNow;
 
-                    try
+                var promotionLock = await _taskQueue.Backend.LockNonBlocking(ScheduledTaskPromotionLockKey);
+                if (promotionLock != null)
+                {
+                    try 
                     {
-                        var taskDidRun = await task.RunIfScheduleReached();
-                        if (taskDidRun && !task.IsRecurring)
-                        {
-                            RemoveTaskFromSchedule(task);
-                        }
+                        await PromoteDueScheduledTasks();
                     }
                     finally
                     {
-                        await backendLock.Release();
+                        await promotionLock.Release();
                     }
                 }
-                catch (Exception e)
-                {
-                    ThreadSafeColoredConsole.Exception("Error processing Schedule Tick.", e);
-                }
             }
+
+            await RescheduleRecurringTasks();
         }
 
-        public async Task AddScheduledTask(Expression<Action> action, TimeSpan offsetFromNow, string taskName)
+        public async Task<ScheduledTask> AddScheduledTask(Expression<Action> action, TimeSpan offsetFromNow)
         {
-            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), offsetFromNow, _taskQueue, false, taskName));
+            var scheduledTask = new ScheduledTask(action.ToTaskInfo(), offsetFromNow, UniqueTaskKey());
+
+            await EnqueueScheduledTask(scheduledTask);
+
+            return scheduledTask;
         }
 
-        public async Task AddScheduledTask(Expression<Action> action, DateTimeOffset offsetFromNow, string taskName)
+        public async Task<ScheduledTask> AddScheduledTask(Expression<Action> action, DateTimeOffset scheduledTime)
         {
-            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), offsetFromNow, _taskQueue, false, taskName));
+            var scheduledTask = new ScheduledTask(action.ToTaskInfo(), scheduledTime, UniqueTaskKey());
+
+            await EnqueueScheduledTask(scheduledTask);
+
+            return scheduledTask;
         }
 
-        public async Task AddScheduledTask(Expression<Action> action, DateTime scheduledTime, string taskName)
+        public async Task<ScheduledTask> AddScheduledTask(Expression<Action> action, DateTime scheduledTime)
         {
-            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), scheduledTime, _taskQueue, false, taskName));
+            var scheduledTask = new ScheduledTask(action.ToTaskInfo(), scheduledTime, UniqueTaskKey());
+
+            await EnqueueScheduledTask(scheduledTask);
+
+            return scheduledTask;
         }
 
-        public async Task AddRecurringTask(Expression<Action> action, TimeSpan interval, string taskName)
+        public async Task<RecurringTask> AddRecurringTask(Expression<Action> action, TimeSpan interval, string taskName)
         {
-            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), interval, _taskQueue, true, taskName));
-        }
+            var recurringTask = new RecurringTask(action.ToTaskInfo(), interval, RecurringTaskKey(taskName));
 
-        public async Task AddRecurringTask(Expression<Action> action, string crontab, string taskName)
-        {
-            await AddTaskToSchedule(new TaskSchedule(action.ToTaskInfo(), crontab, _taskQueue, taskName));
-        }
-
-        public void RemoveScheduledTask(string taskName)
-        {
-            if (!_scheduledTasks.ContainsKey(taskName))
+            if (await RecurringTaskDoesNotExistOrNeedsChange(recurringTask)) 
             {
-                throw new ArgumentException($"Scheduled or Recurring Task not found: {taskName}");
+                await EnqueueRecurringTask(recurringTask);
+                return recurringTask;
             }
 
-            RemoveTaskFromSchedule(_scheduledTasks[taskName]);
+            return null;
         }
 
-        private async Task AddTaskToSchedule(TaskSchedule taskSchedule)
+        public async Task<RecurringTask> AddRecurringTask(Expression<Action> action, string crontab, string taskName)
         {
-            _scheduledTasks[taskSchedule.TaskKey] = taskSchedule;
+            var recurringTask = new RecurringTask(action.ToTaskInfo(), crontab, RecurringTaskKey(taskName));
+
+            if (await RecurringTaskDoesNotExistOrNeedsChange(recurringTask)) 
+            {
+                await EnqueueRecurringTask(recurringTask);
+            }
+
+            return recurringTask;
+        }
+
+        public async Task<bool> CancelRecurringTask(RecurringTask recurringTask) 
+        {
+            return await CancelTask(recurringTask.TaskKey);
+        }
+
+        public async Task<bool> CancelScheduledTask(ScheduledTask scheduledTask) 
+        {
+            return await CancelTask(scheduledTask.TaskKey);
+        }
+
+        public async Task<bool> CancelTask(string taskKey)
+        {
+            if (LoadedCancelTaskScript == null)
+            {
+                LoadedCancelTaskScript = await _taskQueue.Backend.LoadLuaScript(LuaScriptToCancelTask());
+            }
+
+            var didCancel = await _taskQueue.Backend.RunLuaScript(LoadedCancelTaskScript, 
+                new [] {
+                    (RedisKey) ScheduledTasksOrderedSetKey,
+                    (RedisKey) ScheduledTasksMapKey,
+                },
+                new [] {
+                    (RedisValue) taskKey
+                });
+
+            return (bool) didCancel;
+        }
+
+        public async Task<RecurringTask> GetRecurringTask(string taskKey)
+        {
+            var serializedRecurringTask = await _taskQueue.Backend.GetMapField(ScheduledTasksMapKey, 
+                $"serializedRecurringTask::{taskKey}");
+
+            if (string.IsNullOrEmpty(serializedRecurringTask))
+                return null;
             
-            await taskSchedule.ClearLastRunTime();
+            var recurringTask = JsonTaskInfoSerializer.Deserialize<RecurringTask>(serializedRecurringTask);
 
-//            var jsonTaskSchedule = JsonTaskInfoSerializer.Serialize(taskSchedule);
-//            _taskQueue.Backend.AddToList(ScheduleBackupKey, jsonTaskSchedule);
+            return recurringTask;
         }
 
-        private void RemoveTaskFromSchedule(TaskSchedule taskSchedule)
+        private async Task<bool> RecurringTaskDoesNotExistOrNeedsChange(RecurringTask recurringTask)
         {
-//            var jsonTaskSchedule = JsonTaskInfoSerializer.Serialize(taskSchedule);
-//            _taskQueue.Backend.RemoveFromList(ScheduleBackupKey, jsonTaskSchedule);
+            var deserializedRecurringTask = await GetRecurringTask(recurringTask.TaskKey);
+            if (deserializedRecurringTask == null)
+            {
+                return true;
+            }
 
-            _scheduledTasks.Remove(taskSchedule.TaskKey);
+            if (!recurringTask.IsEquivalent(deserializedRecurringTask))
+            {
+                return true;
+            }
+
+            return false;
         }
 
-        private void RestoreScheduledTasksFromStorage()
+        private bool ShouldRunScheduledTaskPromotion() 
         {
-//            var scheduledTasks = _taskQueue.Backend.GetList(ScheduleBackupKey)
-//                .Select(s => JsonTaskInfoSerializer.Deserialize<TaskSchedule>(s)).ToList();
-//
-//            foreach (var scheduledTask in scheduledTasks)
-//            {
-//                _scheduledTasks[scheduledTask.TaskKey] = scheduledTask;
-//            }
+            if (_lastPromotionRunTime == null) 
+            {
+                return true;
+            }
+
+            var timeSinceLastUpdate = DateTime.UtcNow - _lastPromotionRunTime;
+
+            if (timeSinceLastUpdate > _promotionFrequency) 
+            {
+                return true;
+            }
+
+            return false;
         }
 
-        public void FlushBackupStorage()
+        private async Task EnqueueRecurringTask(RecurringTask recurringTask)
         {
-//            _taskQueue.Backend.DeleteKey(ScheduleBackupKey);
+            var serializedTaskInfo = JsonTaskInfoSerializer.Serialize(recurringTask.TaskInfo);
+            await _taskQueue.Backend.SetMapFields(ScheduledTasksMapKey, 
+                (recurringTask.TaskKey, serializedTaskInfo),
+                ($"isRecurring::{recurringTask.TaskKey}", true),
+                ($"serializedRecurringTask::{recurringTask.TaskKey}", JsonTaskInfoSerializer.Serialize(recurringTask)));
+
+            var nextRunTimestamp = recurringTask.GetNextRunTimestamp(recurringTask.StartTime);
+
+            await _taskQueue.Backend.AddToOrderedSet(
+                ScheduledTasksOrderedSetKey, 
+                nextRunTimestamp, 
+                recurringTask.TaskKey);
+        }
+
+        private async Task EnqueueScheduledTask(ScheduledTask scheduledTask)
+        {
+            var serializedTaskInfo = JsonTaskInfoSerializer.Serialize(scheduledTask.TaskInfo);
+            
+            await _taskQueue.Backend.SetMapFields(ScheduledTasksMapKey, 
+                (scheduledTask.TaskKey, serializedTaskInfo),
+                ($"isRecurring::{scheduledTask.TaskKey}", false));
+
+            await _taskQueue.Backend.AddToOrderedSet(
+                ScheduledTasksOrderedSetKey, 
+                scheduledTask.ScheduledUnixTimeMilliseconds, 
+                scheduledTask.TaskKey);
+        }
+
+        private async Task RescheduleRecurringTasks()
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            RecurringTask recurringTask;
+            long nextRunTimestamp;
+
+            if (LoadedRescheduleRecurringTasksScript == null)
+            {
+                LoadedRescheduleRecurringTasksScript = await _taskQueue.Backend.LoadLuaScript(LuaScriptToRescheduleRecurringTask());
+            }
+
+            var serializedRecurringTasks = (await _taskQueue.Backend
+                .DequeueBatch(RecurringTaskRescheduleQueueKey)).ToArray();
+
+            var args = new List<RedisValue>();
+
+            foreach (var serializedRecurringTask in serializedRecurringTasks)
+            {
+                recurringTask = JsonTaskInfoSerializer.Deserialize<RecurringTask>(serializedRecurringTask);
+                nextRunTimestamp = recurringTask.GetNextRunTimestamp(DateTime.UtcNow);
+
+                args.Add((RedisValue) recurringTask.TaskKey);
+                args.Add((RedisValue) nextRunTimestamp);
+            }
+
+            await _taskQueue.Backend.RunLuaScript(LoadedRescheduleRecurringTasksScript, 
+                new [] {
+                    (RedisKey) ScheduledTasksOrderedSetKey,
+                    (RedisKey) ScheduledTasksMapKey,
+                },
+                args.ToArray());
+            
+
+            var profile = $"PROFILE {nameof(RescheduleRecurringTasks)}: {sw.ElapsedMilliseconds}";
+            // Console.WriteLine(profile);
+        }
+
+        private async Task PromoteDueScheduledTasks() 
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            if (LoadedScheduledTaskPromotionScript == null)
+            {
+                LoadedScheduledTaskPromotionScript = await _taskQueue.Backend.LoadLuaScript(LuaScriptToPromoteScheduledTasks());
+            }
+
+            await _taskQueue.Backend.RunLuaScript(LoadedScheduledTaskPromotionScript, 
+                new [] {
+                    (RedisKey) ScheduledTasksOrderedSetKey,
+                    (RedisKey) ScheduledTasksMapKey,
+                    (RedisKey) _taskQueue.Config.QueueName,
+                    (RedisKey) RecurringTaskRescheduleQueueKey
+                },
+                new [] {(RedisValue) DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()});
+
+            var profile = $"PROFILE {nameof(PromoteDueScheduledTasks)}: {sw.ElapsedMilliseconds}";
+            // Console.WriteLine(profile);
+        }
+
+        private string LuaScriptToPromoteScheduledTasks() 
+        {
+            // KEYS[1] = Key for scheduled tasks sorted set
+            // KEYS[2] = Key for scheduled tasks task info hash
+            // KEYS[3] = Key for task queue
+            // KEYS[4] = Key for recurring task re-schedule list
+            // ARGV[1] = Current unix timestamp (milliseconds)
+            return @"
+                local dueScheduledTasks = redis.call(""ZREVRANGEBYSCORE"", KEYS[1], ARGV[1], 0)
+                
+                local serializedTaskInfo
+                local isRecurring
+                local serializedRecurringJob
+
+                local values
+                for _,key in ipairs(dueScheduledTasks) do 
+                    values = redis.call(""HMGET"", KEYS[2], key, ""isRecurring::""..key, ""serializedRecurringTask::""..key)
+                    serializedTaskInfo = values[1]
+                    isRecurring = values[2]
+                    serializedRecurringJob = values[3]
+
+                    redis.call(""LPUSH"", KEYS[3], serializedTaskInfo)
+
+                    if (isRecurring == ""1"") then
+                        redis.call(""LPUSH"", KEYS[4], serializedRecurringJob)
+                    else
+                        redis.call(""HDEL"", KEYS[2], key, ""isRecurring::""..key)
+                    end
+                end
+
+                redis.call(""ZREMRANGEBYSCORE"", KEYS[1], 0, ARGV[1])
+                ";
+        }
+
+        private string LuaScriptToRescheduleRecurringTask() 
+        {
+            // KEYS[1] = Key for scheduled tasks sorted set
+            // KEYS[2] = Key for scheduled tasks task info hash
+            // ARGV[1] = Recurring Task TaskKey
+            // ARGV[2] = Recurring Task next run timestamp (milliseconds)
+            return @"
+                for i=1, #ARGV do
+                    local recurringTaskStillScheduled = redis.call(""HGET"", KEYS[2], ARGV[i])
+
+                    if (recurringTaskStillScheduled) then
+                        redis.call(""ZADD"", KEYS[1], ARGV[i+1], ARGV[i])
+                    end
+                end
+                ";
+        }
+
+        private string LuaScriptToCancelTask()
+        {
+            // KEYS[1] = Key for scheduled tasks sorted set
+            // KEYS[2] = Key for scheduled tasks task info hash
+            // ARGV[1] = Task TaskKey
+            return @"
+                local deletedSchedule = redis.call(""ZREM"", KEYS[1], ARGV[1])
+                local deletedFields = redis.call(""HDEL"", KEYS[2], ARGV[1], ""isRecurring::""..ARGV[1], ""serializedRecurringTask::""..ARGV[1])
+
+                if (deletedSchedule ~= 0) then
+                    return true
+                end
+
+                if (deletedFields ~= 0) then
+                    return true
+                end
+
+                return false
+                ";
+        }
+
+        private string UniqueTaskKey()
+        {
+            return $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}::{Guid.NewGuid().ToString()}";
+        }
+
+        private string RecurringTaskKey(string taskName)
+        {
+            return $"{nameof(RecurringTaskKey)}::{taskName}";
         }
     }
 }

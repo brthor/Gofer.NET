@@ -7,10 +7,11 @@ namespace Gofer.NET
         public static TaskQueue Redis(string redisConnectionString, string queueName=null)
         {
             var config = TaskQueueConfiguration.Default();
-            var backend = new RedisTaskQueueBackend(redisConnectionString,
-                queueName ?? config.QueueName,
-                null);
-//                config.BackupQueueName);
+            if (queueName != null) {
+                config.QueueName = queueName;
+            }
+            
+            var backend = new RedisBackend(redisConnectionString);
             
             var taskQueue = new TaskQueue(backend, config);
 

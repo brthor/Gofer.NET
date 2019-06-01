@@ -18,12 +18,18 @@ namespace Gofer.NET.Tests
 
         private readonly string _semaphoreFile;
 
+        public static TaskQueue UniqueRedisTaskQueue(string prefix=null) 
+        {
+            var taskQueueName = $"{prefix ?? nameof(TaskQueueTestFixture)}::{Guid.NewGuid().ToString()}";
+            return TaskQueue.Redis(RedisConnectionString, taskQueueName);
+        }
+
         public TaskQueueTestFixture(string uniqueId, TaskQueue taskQueue=null)
         {
             _semaphoreFile = Path.Combine(AppContext.BaseDirectory, uniqueId, Path.GetTempFileName());
             
             var testQueueName = uniqueId + "::TestQueue";
-            TaskQueue = taskQueue ?? TaskQueue.Redis(RedisConnectionString, testQueueName);
+            TaskQueue = taskQueue ?? TaskQueueTestFixture.UniqueRedisTaskQueue(uniqueId);
             
             // Clear out the queue
             while(TaskQueue.Dequeue().Result != null) { }
