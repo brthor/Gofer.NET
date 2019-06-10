@@ -62,6 +62,25 @@ namespace Gofer.NET
             return Math.Abs(removedCount) == 1;
         }
 
+        public async Task<IEnumerable<RedisValue>> PopBatch(RedisKey stackName, int batchSize)
+        {
+            var db = Redis.GetDatabase();
+            
+            var transaction = db.CreateTransaction();
+            
+            // `LRANGE` fetches batch values, but in LIFO order
+            var listValuesTask = transaction.ListRangeAsync(stackName, start: -batchSize, stop: -1);
+            
+            var listTrimTask = transaction.ListTrimAsync(stackName, start: 0, stop: -batchSize-1);
+            await transaction.ExecuteAsync();
+
+            var listValues = await listValuesTask;
+            await listTrimTask;
+            
+            // Convert list values to FIFO orer
+            return listValues.Reverse();
+        }
+
         public async Task<IEnumerable<RedisValue>> PopAll(RedisKey stackName)
         {
             var db = Redis.GetDatabase();

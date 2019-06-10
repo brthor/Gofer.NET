@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -11,10 +12,11 @@ namespace Gofer.NET
 {
     public partial class TaskQueue
     {
-        public ITaskQueueBackend Backend { get; }
+        public IBackend Backend { get; }
+
         public TaskQueueConfiguration Config { get; }
         
-        public TaskQueue(ITaskQueueBackend backend, TaskQueueConfiguration config=null)
+        public TaskQueue(IBackend backend, TaskQueueConfiguration config=null)
         {
             Backend = backend;
             Config = config ?? TaskQueueConfiguration.Default();
@@ -39,16 +41,16 @@ namespace Gofer.NET
             taskInfo.ConvertTypeArgs();
             var jsonString = JsonTaskInfoSerializer.Serialize(taskInfo);
 
-            await Backend.Enqueue(jsonString);
+            await Backend.Enqueue(Config.QueueName, jsonString);
         }
         
-        public async Task ExecuteNext()
+        public async Task<bool> ExecuteNext()
         {
             var (taskJsonString, taskInfo) = await SafeDequeue();
 
             if (taskInfo == null)
             {
-                return;
+                return false;
             }
 
             try
@@ -59,6 +61,8 @@ namespace Gofer.NET
             {
 //                Backend.RemoveBackup(taskJsonString);
             }
+
+            return true;
         }
         
         /// <summary>
@@ -66,22 +70,22 @@ namespace Gofer.NET
         /// be removed from the backing queue.
         /// </summary>
         /// <returns></returns>
-        public async Task<Tuple<string, TaskInfo>> SafeDequeue()
+        public async Task<(string, TaskInfo)> SafeDequeue()
         {
-            var jsonString = await Backend.Dequeue();
+            var jsonString = await Backend.Dequeue(Config.QueueName);
             if (jsonString == null)
             {
-                return Tuple.Create<string, TaskInfo>(null, null);
+                return (null, null);
             }
             
             var taskInfo = JsonTaskInfoSerializer.Deserialize(jsonString);
             taskInfo.UnconvertTypeArgs();
-            return Tuple.Create(jsonString, taskInfo);
+            return (jsonString, taskInfo);
         }
         
-        public async Task<TaskInfo> Dequeue()
+        internal async Task<TaskInfo> Dequeue()
         {
-            var jsonString = await Backend.Dequeue();
+            var jsonString = await Backend.Dequeue(Config.QueueName);
             if (jsonString == null)
             {
                 return null;

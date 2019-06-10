@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
@@ -25,6 +26,31 @@ namespace Gofer.NET.Utils
         public bool IsExpired(TimeSpan expirationSpan)
         {
             return CreatedAtUtc < (DateTime.UtcNow - expirationSpan);
+        }
+
+        public bool IsEquivalent(TaskInfo otherTaskInfo) 
+        {
+            if (otherTaskInfo == null)
+            {
+                throw new ArgumentException("otherTaskInfo must not be null");
+            }
+            
+            if (Args.Length != otherTaskInfo.Args.Length) 
+            {
+                return false;
+            }
+
+            for (var i=0; i<Args.Length; ++i) {
+                if (!Args[i].Equals(otherTaskInfo.Args[i]))
+                {
+                    return false;
+                }
+            }
+
+            return string.Equals(AssemblyName, otherTaskInfo.AssemblyName, StringComparison.Ordinal)
+                && string.Equals(TypeName, otherTaskInfo.TypeName, StringComparison.Ordinal)
+                && string.Equals(MethodName, otherTaskInfo.MethodName, StringComparison.Ordinal)
+                && ReturnType.Equals(otherTaskInfo.ReturnType);
         }
 
         public void ConvertTypeArgs() 
