@@ -302,9 +302,11 @@ namespace Gofer.NET
                 local serializedTaskInfo
                 local isRecurring
                 local serializedRecurringJob
-
+                local key
                 local values
-                for _,key in ipairs(dueScheduledTasks) do 
+                
+                for i = #dueScheduledTasks, 1, -1 do
+                    key = dueScheduledTasks[i]
                     values = redis.call(""HMGET"", KEYS[2], key, ""isRecurring::""..key, ""serializedRecurringTask::""..key)
                     serializedTaskInfo = values[1]
                     isRecurring = values[2]

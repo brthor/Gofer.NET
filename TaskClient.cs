@@ -17,8 +17,16 @@ namespace Gofer.NET
         private bool IsCanceled { get; set; }
         
         public TaskQueue TaskQueue { get; }
+
         public Action<Exception> OnError { get; }
+
         public TaskScheduler TaskScheduler { get; }
+
+        private Task TaskSchedulerThread { get; set; }
+
+        private Task TaskRunnerThread { get; set; }
+
+        private CancellationTokenSource ListenCancellationTokenSource { get; set; }
 
         public TaskClient(
             TaskQueue taskQueue, 
@@ -28,54 +36,76 @@ namespace Gofer.NET
             OnError = onError;
             TaskScheduler = new TaskScheduler(TaskQueue);
             IsCanceled = false;
-            
         }
 
         public async Task Listen()
         {
-            while (true)
+            Start();
+
+            await Task.WhenAll(new [] {
+                TaskRunnerThread, 
+                TaskSchedulerThread});
+        }
+
+        public CancellationTokenSource Start()
+        {
+            if (TaskSchedulerThread != null || TaskRunnerThread != null)
             {
-                // REVIEW: Locking for read here may be unnecessary.
-                lock (Locker)
+                throw new Exception("This TaskClient is already listening.");
+            }
+
+            ListenCancellationTokenSource = new CancellationTokenSource();
+            var token = ListenCancellationTokenSource.Token;
+
+            TaskSchedulerThread = Task.Run(async () => {
+                var inThreadTaskScheduler = new TaskScheduler(TaskQueue);
+
+                while (true)
                 {
-                    if (IsCanceled)
+                    if (token.IsCancellationRequested)
                     {
                         return;
                     }
-                }
-                
-                // Tick the Task Scheduler
-                await TaskScheduler.Tick();
-                
-                // Execute Any Queued Tasks
-                var (json, info) = await TaskQueue.SafeDequeue();
-                if (info != null)
-                {
-                    LogTaskStarted(info);
 
-                    try
-                    {
-                        var now = DateTime.Now;
-                        
-                        await info.ExecuteTask();
-                        
-                        var completionSeconds = (DateTime.Now - now).TotalSeconds;
-                        LogTaskFinished(info, completionSeconds);
-                    }
-                    catch (Exception e)
-                    {
-                        LogTaskException(info, e);
-                    }
-                    finally
-                    {
-//                        TaskQueue.Backend.RemoveBackup(json);
-                    }
+                    await inThreadTaskScheduler.Tick();
                 }
-                
-                // Restore any expired backup tasks
-//                TaskQueue.RestoreExpiredBackupTasks();
-                
-                Thread.Sleep(PollDelay);
+            }, ListenCancellationTokenSource.Token);
+
+            TaskRunnerThread = Task.Run(async () => {
+                while (true)
+                {
+                    if (token.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    
+                    await ExecuteQueuedTask();
+                }
+            }, ListenCancellationTokenSource.Token);
+
+            return ListenCancellationTokenSource;
+        }
+
+        private async Task ExecuteQueuedTask()
+        {
+            var (json, info) = await TaskQueue.SafeDequeue();
+            if (info != null)
+            {
+                LogTaskStarted(info);
+
+                try
+                {
+                    var now = DateTime.Now;
+                    
+                    await info.ExecuteTask();
+                    
+                    var completionSeconds = (DateTime.Now - now).TotalSeconds;
+                    LogTaskFinished(info, completionSeconds);
+                }
+                catch (Exception e)
+                {
+                    LogTaskException(info, e);
+                }
             }
         }
 
@@ -101,10 +131,7 @@ namespace Gofer.NET
 
         public void CancelListen()
         {
-            lock (Locker)
-            {
-                IsCanceled = true;
-            }
+            ListenCancellationTokenSource.Cancel();
         }
     }
 }
