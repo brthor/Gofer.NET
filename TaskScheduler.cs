@@ -239,6 +239,11 @@ namespace Gofer.NET
             var serializedRecurringTasks = (await _taskQueue.Backend
                 .DequeueBatch(RecurringTaskRescheduleQueueKey)).ToArray();
 
+            if (serializedRecurringTasks.Length == 0)
+            {
+                return;
+            }
+
             var args = new List<RedisValue>();
 
             foreach (var serializedRecurringTask in serializedRecurringTasks)
