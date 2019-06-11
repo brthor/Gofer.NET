@@ -41,37 +41,48 @@ namespace Gofer.NET
             return await Redis.GetDatabase().ListRightPopLeftPushAsync(popFromQueueName, pushToQueueName);
         }
 
-        public async Task<RedisValue> Peek(RedisKey stackName)
+        public async Task<RedisValue> Peek(RedisKey queueName)
         {
-            return await Redis.GetDatabase().ListGetByIndexAsync(stackName, -1);
+            return await Redis.GetDatabase().ListGetByIndexAsync(queueName, -1);
         }
         
-        public async Task<RedisValue> PeekTail(RedisKey stackName)
+        public async Task<RedisValue> PeekTail(RedisKey queueName)
         {
-            return await Redis.GetDatabase().ListGetByIndexAsync(stackName, 0); 
+            return await Redis.GetDatabase().ListGetByIndexAsync(queueName, 0); 
         }
         
         /// <summary>
-        /// Removes the most recently inserted value from the queue. (Searches from tail to head)
+        /// Removes the first inserted value from the queue. (Searches from head to tail of queue)
         /// </summary>
         /// <returns>false if no value was found to be removed, true otherwise.</returns>
-        public async Task<bool> Remove(RedisKey stackName, RedisValue value)
+        public async Task<bool> Remove(RedisKey queueName, RedisValue value)
         {
-            var removedCount = await Redis.GetDatabase().ListRemoveAsync(stackName, value, -1); 
+            var removedCount = await Redis.GetDatabase().ListRemoveAsync(queueName, value, -1); 
 
             return Math.Abs(removedCount) == 1;
         }
 
-        public async Task<IEnumerable<RedisValue>> PopBatch(RedisKey stackName, int batchSize)
+        /// <summary>
+        /// Removes the last inserted value from the queue. (Searches from tail to head of queue)
+        /// </summary>
+        /// <returns>false if no value was found to be removed, true otherwise.</returns>
+        public async Task<bool> RemoveTail(RedisKey queueName, RedisValue value)
+        {
+            var removedCount = await Redis.GetDatabase().ListRemoveAsync(queueName, value, 1); 
+
+            return Math.Abs(removedCount) == 1;
+        }
+
+        public async Task<IEnumerable<RedisValue>> PopBatch(RedisKey queueName, int batchSize)
         {
             var db = Redis.GetDatabase();
             
             var transaction = db.CreateTransaction();
             
             // `LRANGE` fetches batch values, but in LIFO order
-            var listValuesTask = transaction.ListRangeAsync(stackName, start: -batchSize, stop: -1);
+            var listValuesTask = transaction.ListRangeAsync(queueName, start: -batchSize, stop: -1);
             
-            var listTrimTask = transaction.ListTrimAsync(stackName, start: 0, stop: -batchSize-1);
+            var listTrimTask = transaction.ListTrimAsync(queueName, start: 0, stop: -batchSize-1);
             await transaction.ExecuteAsync();
 
             var listValues = await listValuesTask;
@@ -81,18 +92,18 @@ namespace Gofer.NET
             return listValues.Reverse();
         }
 
-        public async Task<IEnumerable<RedisValue>> PopAll(RedisKey stackName)
+        public async Task<IEnumerable<RedisValue>> PopAll(RedisKey queueName)
         {
             var db = Redis.GetDatabase();
             
             var transaction = db.CreateTransaction();
             
             // `LRANGE <list> 0 1` fetches all values, but in LIFO order
-            var listValuesTask = transaction.ListRangeAsync(stackName, start: 0, stop: - 1);
+            var listValuesTask = transaction.ListRangeAsync(queueName, start: 0, stop: - 1);
             
             // `LTRIM <list> 1 0` removes all values
-            var listTrimTask = transaction.ListTrimAsync(stackName, start: 1, stop: 0);
-            transaction.Execute();
+            var listTrimTask = transaction.ListTrimAsync(queueName, start: 1, stop: 0);
+            await transaction.ExecuteAsync();
 
             var listValues = await listValuesTask;
             await listTrimTask;
