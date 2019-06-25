@@ -1,6 +1,7 @@
 language: csharp
 mono: none
 dotnet: 2.0.0
+  
 dist: trusty
 services:
   - redis-server
@@ -13,3 +14,20 @@ after_success:
 cache:
   directories:
   - $HOME/.nuget
+
+before_install:
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ulimit -n 2048; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew tap homebrew/services   ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install redis           ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew services start redis    ; fi
+
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+    - os: osx
+      osx_image: xcode10.2
+
+branches:
+  only:
+  - master
