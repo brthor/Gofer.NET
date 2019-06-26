@@ -1,112 +1,42 @@
 # Gofer.NET: Easy distributed tasks/jobs for .NET Core
 
 [![Build Status](https://travis-ci.org/brthor/Gofer.NET.svg?branch=master)](https://travis-ci.org/brthor/Gofer.NET)
-[![Myget Version Number](https://img.shields.io/nuget/v/Gofer.NET.svg)](https://www.nuget.org/packages/Gofer.NET)
+[![Nuget Version Number](https://img.shields.io/nuget/v/Gofer.NET.svg)](https://www.nuget.org/packages/Gofer.NET)
 [![Join the chat at https://gitter.im/Gofer-NET/Lobby](https://badges.gitter.im/Gofer-NET/Lobby.svg)](https://gitter.im/Gofer-NET/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+## Documentation
+
+[Read the Docs](https://brthor.github.io/gofer.net)
+
 ## What is this?
-Run background jobs (one-off, or scheduled) on a worker pool easily. 
 
- - Scale your worker pool by simply adding new nodes. 
- - ~~Tasks are processed at least once, and not lost if a worker dies.~~ (Currently disabled due to incorrect behavior until further development.) 
- - Supports Redis backend, with an extensible API for developing additional backends.
+This is a distributed job runner for .NET Standard 2.0 Applications.
 
-Inspired by celery for python, this is a distributed job runner for .NET Standard 2.0 Applications. Currently only tested using .NET Core 2.0.
+Inspired by Celery for Python, it allows you to quickly queue code execution on a worker pool.
 
-Here's a quick example using the same machine to execute jobs:
-```c#
-    public static void Main(string[] args)
-    {
-        var redisConnectString = "..."
+- Use natural expression syntax to queue jobs for execution.
 
-        var taskQueue = TaskQueue.Redis(redisConnectString);
-        
-        taskQueue.Enqueue(() => RunTask("echo"));
-        taskQueue.ExecuteNext();
-    }
-    
-    private static void RunTask(string message)
-    {
-        Console.WriteLine(message);
-    }
-```
+- Queued jobs are persisted, and automatically run by the first available worker.
 
-Currently requires a Redis backend to function, but other backends may be developed relatively easily.
- 
-## Getting Started
-*Get started with background jobs for your web app in 1 minute* 
+- Scale your worker pool by simply adding new nodes.
 
-#### Install the dotnet cli
-We recommend using the dotnet cli, to get started, but it's not a necessity.
-Gofer.NET is a `netstandard2.0` project, so you will need the 2.0.0 version of the dotnet cli.
+- Backed by Redis, all tasks are persistent.
 
-```
-$ dotnet --version
-2.0.0
-```
- 
-#### Create a Project
-Getting started is easy. First create a new project:
-
-`dotnet new console`
-
-#### Add our NuGet Package to your project
-
-Add the Gofer.NET package:
-
-`dotnet add package Gofer.NET --version 1.0.0-*`
-
-#### Put it all together
-You can enqueue a function with any arguments that can be serialized. See examples below.
-Setup your Program.cs to run the task client like so:
+## A Minimal Example
 
 ```c#
-public class Program
+public static async Task Main(string[] args)
 {
-    public static void Main(string[] args)
-    {
-        var redisConnectString = "..."
+    var redisConnectionString = "127.0.0.1:6379";
 
-        var taskClient = new TaskClient(TaskQueue.Redis(redisConnectString));
-        
-        var aStr = "astring";
-        taskClient.TaskQueue.Enqueue(() => RunTaskNow(aStr));
-        
-        var myCustom = new CustomClass {Value="Custom!"};
-        taskClient.TaskQueue.Enqueue(() => SampleAsyncFunc(myCustom));
-        
-        // Run a scheduled task at a defined interval
-        taskClient.TaskScheduler.AddScheduledTask(() => ScheduledTask(), TimeSpan.FromSeconds(5), "scheduledTaskName");
-        
-        // Start the task listener, effectively turning this node into a worker.
-        // At least one listener is required for scheduled or enqueued jobs to run.
-        taskClient.Listen();
-    }
+    var taskQueue = TaskQueue.Redis(redisConnectionString);
     
-    private async Task SampleAsyncFunc(object value) {
-        await Task.Delay(500);
-        Console.WriteLine(value.ToString());
-    }
-    
-    private static void RunTaskNow(object value)
-    {
-        Console.WriteLine(value.ToString());
-    }
-    
-    private static void ScheduledTask()
-    {
-        Console.WriteLine("Scheduled!");
-    }
-    
-    private class CustomClass
-    {
-        public string Value { get; set; }
-        
-        public override string ToString()
-        {
-            return Value;
-        }
-    }
+    await taskQueue.Enqueue(() => Console.WriteLine("echo"));
+    await taskQueue.ExecuteNext();
 }
 ```
+ 
+## Getting Started
+
+[Read the Getting Started Guide.](https://brthor.github.io/gofer.net/#getting-started)
  
