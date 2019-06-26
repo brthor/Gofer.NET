@@ -18,6 +18,8 @@ namespace Gofer.NET
             return new TaskKey($"Recurring{nameof(TaskKey)}::{recurringTaskName}", recurringTaskName);
         }
 
+        public TaskKey() {}
+
         public TaskKey(string value)
         {
             Value = value;
