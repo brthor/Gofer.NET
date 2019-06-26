@@ -1,0 +1,13 @@
+# theme: minimal
+remote_theme: brthor/just-the-docs
+
+title: Gofer.NET
+description: Easy C# API for Distributed Background Tasks/Jobs for .NET Core. Inspired by celery for python.
+permalink: pretty
+
+search_enabled: true
+
+# Aux links for the upper right navigation
+aux_links:
+  "Gofer.NET on GitHub":
+    - "//github.com/brthor/Gofer.NET"
