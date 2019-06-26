@@ -122,7 +122,7 @@ namespace Gofer.NET
                 throw new ArgumentException("comparisonRecurringTask must not be null");
             }
 
-            if (comparisonRecurringTask.TaskKey != TaskKey) 
+            if (!comparisonRecurringTask.TaskKey.Equals(TaskKey))
             {
                 throw new Exception("Cannot compare with a recurringTask with a different TaskKey.");
             }
