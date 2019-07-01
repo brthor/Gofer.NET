@@ -6,7 +6,7 @@
 
 ## Documentation
 
-[Read the Docs](https://brthor.github.io/gofer.net)
+[Read the Docs](https://brthor.github.io/Gofer.NET/)
 
 ## What is this?
 
@@ -38,5 +38,5 @@ public static async Task Main(string[] args)
  
 ## Getting Started
 
-[Read the Getting Started Guide.](https://brthor.github.io/gofer.net/#getting-started)
+[Read the Getting Started Guide.](https://brthor.github.io/Gofer.NET/#getting-started)
  
