@@ -6,7 +6,7 @@
   <ItemGroup>
     <PackageReference Include="NCrontab" Version="3.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="StackExchange.Redis.StrongName" Version="1.2.6" />
+    <PackageReference Include="StackExchange.Redis" Version="2.0.600" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Gofer.NET.Utils\Gofer.NET.Utils.csproj" />
