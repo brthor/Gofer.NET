@@ -27,6 +27,10 @@ matrix:
       dist: trusty
     - os: osx
       osx_image: xcode10.2
+      cache:
+      directories:
+      - "/Users/travis/Library/Caches/Homebrew/"
+      - "$HOME/.nuget"
 
 branches:
   only:
