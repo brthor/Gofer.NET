@@ -17,21 +17,22 @@ namespace Gofer.NET
             string key, 
             TimeSpan? duration=null,
             TimeSpan? blockingTimeout=null,
-            TimeSpan? tryLockInterval=null)
+            TimeSpan? tryLockInterval=null,
+            string token=null)
         {
             duration = duration ?? TimeSpan.FromMinutes(5);
             blockingTimeout = blockingTimeout ?? TimeSpan.FromSeconds(60);
             tryLockInterval = tryLockInterval ?? TimeSpan.FromMilliseconds(200);
             
-            RedisValue token = Guid.NewGuid().ToString();
+            RedisValue actualToken = token ?? Guid.NewGuid().ToString();
             var db = redis.GetDatabase();
 
             var startTime = DateTime.Now;
             while (true)
             {
-                if (await db.LockTakeAsync(key, token, duration.Value))
+                if (await db.LockTakeAsync(key, actualToken, duration.Value))
                 {
-                    return new RedisLock(db, key, token);
+                    return new RedisLock(db, key, actualToken);
                 }
 
                 await Task.Delay(tryLockInterval.Value);
@@ -52,16 +53,17 @@ namespace Gofer.NET
         /// <returns></returns>
         public static async Task<RedisLock> LockNonBlockingAsync(this IConnectionMultiplexer redis, 
             string key, 
-            TimeSpan? duration=null)
+            TimeSpan? duration=null,
+            string token=null)
         {
             duration = duration ?? TimeSpan.FromMinutes(5);
             
-            RedisValue token = Guid.NewGuid().ToString();
+            RedisValue actualToken = token ?? Guid.NewGuid().ToString();
             var db = redis.GetDatabase();
 
-            if (await db.LockTakeAsync(key, token, duration.Value))
+            if (await db.LockTakeAsync(key, actualToken, duration.Value))
             {
-                return new RedisLock(db, key, token);
+                return new RedisLock(db, key, actualToken);
             }
 
             return null;
