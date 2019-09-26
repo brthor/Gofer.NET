@@ -66,26 +66,37 @@ namespace Gofer.NET.Tests
                 TC(() => LongFunc(long.MaxValue, semaphoreFile), long.MaxValue.ToString()),
                 TC(() => LongFunc(long.MinValue, semaphoreFile), long.MinValue.ToString()),
 
+                // Boolean Arguments
                 TC(() => BoolFunc(true, semaphoreFile), true.ToString()),
                 TC(() => BoolFunc(false, semaphoreFile), false.ToString()),
 
+                // String Arguments
                 TC(() => StringFunc("astring", semaphoreFile), "astring"),
                 TC(() => StringFunc(variableToExtract, semaphoreFile), variableToExtract),
 
+                // Object Arguments
                 TC(() => ObjectFunc(new TestDataHolder {Value = "astring"}, semaphoreFile), "astring"),
 
+                // DateTime Arguments
                 TC(() => DateTimeFunc(now, semaphoreFile), now.ToString()),
                 TC(() => DateTimeFunc(utcNow, semaphoreFile), utcNow.ToString()),
 
+                // Nullable Type Arguments
                 TC(() => NullableTypeFunc(null, semaphoreFile), "null"),
                 TC(() => NullableTypeFunc(now, semaphoreFile), now.ToString()),
+
+                // Array Arguments
                 TC(() => ArrayFunc1(new[] {"this", "string", "is"}, semaphoreFile), "this,string,is"),
                 TC(() => ArrayFunc2(new[] {1, 2, 3, 4}, semaphoreFile), "1,2,3,4"),
                 TC(() => ArrayFunc3(new int?[] {1, 2, 3, null, 5}, semaphoreFile), "1,2,3,null,5"),
 
+                // Type 'Type' Arguments
                 TC(() => TypeFunc(typeof(object), semaphoreFile), typeof(object).ToString()),
                 TC(() => TypeFunc(typeof(GivenARedisTaskQueue), semaphoreFile), typeof(GivenARedisTaskQueue).ToString()),
                 TC(() => TypeFunc(null, semaphoreFile), "null"),
+
+                // Function Arguments
+                TC(() => FuncFunc(() => 1, semaphoreFile), "1"),
                 
                 // Awaiting inside the lambda is unnecessary, as the method is extracted and serialized.
 #pragma warning disable 4014
@@ -265,6 +276,11 @@ namespace Gofer.NET.Tests
             }
             
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, str);
+        }
+
+        public void FuncFunc(Func<int> func, string semaphoreFile)
+        {
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, func().ToString());
         }
     }
 }
