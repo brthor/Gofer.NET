@@ -51,12 +51,21 @@ namespace Gofer.NET.Utils
         
         public static TaskInfo ToTaskInfo(this MethodInfo method, object[] args)
         {
+            var methodParams = method.GetParameters();
+            var argTypes = new Type[methodParams.Length];
+            
+            for (var i=0; i < methodParams.Length; ++ i)
+            {
+                argTypes[i] = methodParams[i].ParameterType;
+            }
+
             var taskInfo = new TaskInfo
             {
                 AssemblyName = method.DeclaringType.Assembly.FullName,
                 TypeName = method.DeclaringType.FullName,
                 MethodName = method.Name,
                 Args = args,
+                ArgTypes = argTypes,
                 Id = Guid.NewGuid().ToString(),
                 CreatedAtUtc = DateTime.UtcNow,
                 ReturnType = method.ReturnType

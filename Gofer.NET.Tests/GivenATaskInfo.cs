@@ -30,6 +30,7 @@ namespace Gofer.NET.Tests
                 deserializedTaskInfo.MethodName.Should().Be(taskInfo.MethodName);
                 deserializedTaskInfo.ReturnType.Should().Be(taskInfo.ReturnType);
                 deserializedTaskInfo.Args.ShouldAllBeEquivalentTo(taskInfo.Args);
+                deserializedTaskInfo.ArgTypes.ShouldAllBeEquivalentTo(taskInfo.ArgTypes);
                 deserializedTaskInfo.CreatedAtUtc.Should().Be(taskInfo.CreatedAtUtc);
 
                 deserializedTaskInfo.IsEquivalent(taskInfo).Should().BeTrue();

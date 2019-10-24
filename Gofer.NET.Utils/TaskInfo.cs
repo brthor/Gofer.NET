@@ -18,6 +18,8 @@ namespace Gofer.NET.Utils
         public string MethodName { get; set; }
 
         public object[] Args { get; set; }
+
+        public Type[] ArgTypes { get; set; }
         
         public Type ReturnType { get; set; }
         
@@ -77,42 +79,53 @@ namespace Gofer.NET.Utils
             }
         }
 
+        private async Task<object> InvokeMethod(MethodInfo method, object instance)
+        {
+            if (method.IsAsync())
+            {
+                var result = method.Invoke(instance, Args);
+
+                var task = (Task) result;
+                await task;
+
+                var resultProperty = task.GetType().GetProperty("Result");
+                var resultValue = resultProperty.GetValue(task);
+            
+                // Return null if the method is a Task<void> equivalent
+                var resultType = resultValue.GetType();
+                if (resultType.Name.Equals("VoidTaskResult", StringComparison.Ordinal)
+                    && resultType.Namespace.Equals("System.Threading.Tasks", StringComparison.Ordinal))
+                {
+                    return null;
+                }
+            
+                return resultValue;
+            }
+            
+            return method.Invoke(instance, Args);
+        }
+
         public async Task<object> ExecuteTask()
         {
             var assembly = Assembly.Load(AssemblyName);
             var type = assembly.GetType(TypeName);
             
             var staticMethod = type.GetMethod(MethodName, 
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic, 
+                null, 
+                ArgTypes, 
+                null);
 
             if (staticMethod != null)
             {
-                if (staticMethod.IsAsync())
-                {
-                    var result = staticMethod.Invoke(null, Args);
-
-                    var task = (Task) result;
-                    await task;
-
-                    var resultProperty = task.GetType().GetProperty("Result");
-                    var resultValue = resultProperty.GetValue(task);
-                
-                    // Return null if the method is a Task<void> equivalent
-                    var resultType = resultValue.GetType();
-                    if (resultType.Name.Equals("VoidTaskResult", StringComparison.Ordinal)
-                        && resultType.Namespace.Equals("System.Threading.Tasks", StringComparison.Ordinal))
-                    {
-                        return null;
-                    }
-                
-                    return resultValue;
-                }
-                
-                return staticMethod.Invoke(null, Args);
+                return await InvokeMethod(staticMethod, null);
             }
             
-            var instanceMethod = type.GetMethod(MethodName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var instanceMethod = type.GetMethod(MethodName, 
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, 
+                null, 
+                ArgTypes, 
+                null);
             
             if (instanceMethod == null)
             {
@@ -121,28 +134,7 @@ namespace Gofer.NET.Utils
 
             var instance = Activator.CreateInstance(type);
             
-            if (instanceMethod.IsAsync())
-            {
-                var result = instanceMethod.Invoke(instance, Args);
-                
-                var task = (Task) result;
-                await task;
-
-                var resultProperty = task.GetType().GetProperty("Result");
-                var resultValue = resultProperty.GetValue(task);
-                
-                // Return null if the method is a Task<void> equivalent
-                var resultType = resultValue.GetType();
-                if (resultType.Name.Equals("VoidTaskResult", StringComparison.Ordinal)
-                    && resultType.Namespace.Equals("System.Threading.Tasks", StringComparison.Ordinal))
-                {
-                    return null;
-                }
-                
-                return resultValue;
-            }
-            
-            return instanceMethod.Invoke(instance, Args);
+            return await InvokeMethod(instanceMethod, instance);
         }
     }
 }
