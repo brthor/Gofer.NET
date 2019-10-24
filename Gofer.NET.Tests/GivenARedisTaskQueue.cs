@@ -72,7 +72,9 @@ namespace Gofer.NET.Tests
                 TC(() => StringFunc("astring", semaphoreFile), "astring"),
                 TC(() => StringFunc(variableToExtract, semaphoreFile), variableToExtract),
 
+                // Object Arguments + Overloaded Version
                 TC(() => ObjectFunc(new TestDataHolder {Value = "astring"}, semaphoreFile), "astring"),
+                TC(() => ObjectFunc(null, new TestDataHolder {Value = "astring"}, semaphoreFile), "astring"),
 
                 TC(() => DateTimeFunc(now, semaphoreFile), now.ToString()),
                 TC(() => DateTimeFunc(utcNow, semaphoreFile), utcNow.ToString()),
@@ -231,6 +233,11 @@ namespace Gofer.NET.Tests
         public void ObjectFunc(object num, string semaphoreFile)
         {
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
+        }
+
+        public void ObjectFunc(object num1, object num2, string semaphoreFile)
+        {
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num2);
         }
 
         public void ExceptionFunc(Exception exc, string semaphoreFile)
