@@ -16,6 +16,12 @@ namespace Gofer.NET.Utils
                 var valueExpression = Expression.Constant(argumentValue, argument.Type);
                 argumentExpressions.Add(valueExpression);
             }
+
+            if (node.Method.Name == nameof(TaskExtensions.T)
+                && node.Method.DeclaringType == typeof(TaskExtensions))
+            {
+                node = (MethodCallExpression) node.Object;
+            }
             
             return Expression.Call(node.Object, node.Method, argumentExpressions);
         }

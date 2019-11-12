@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Gofer.NET.Utils;
 using Xunit;
 
 namespace Gofer.NET.Tests
@@ -92,8 +93,11 @@ namespace Gofer.NET.Tests
                 // Awaiting inside the lambda is unnecessary, as the method is extracted and serialized.
 #pragma warning disable 4014
                 TC(() => AsyncFunc(semaphoreFile), "async"),
-                TC(() => AsyncFuncThatReturnsString(semaphoreFile), "async")
+                TC(() => AsyncFuncThatReturnsString(semaphoreFile), "async"),
 #pragma warning restore 4014
+
+                TC(() => AsyncFunc(semaphoreFile).T(), "async"),
+                TC(() => AsyncFuncThatReturnsString(semaphoreFile).T(), "async")
             };
             
 
