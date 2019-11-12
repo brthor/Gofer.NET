@@ -7,6 +7,12 @@ namespace Gofer.NET.Utils
     {
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
+            if (node.Method.Name == nameof(TaskExtensions.T)
+                && node.Method.DeclaringType == typeof(TaskExtensions))
+            {
+                node = (MethodCallExpression) node.Arguments[0];
+            }
+
             var argumentExpressions = new List<Expression>();
             foreach (var argument in node.Arguments)
             {
@@ -15,12 +21,6 @@ namespace Gofer.NET.Utils
 
                 var valueExpression = Expression.Constant(argumentValue, argument.Type);
                 argumentExpressions.Add(valueExpression);
-            }
-
-            if (node.Method.Name == nameof(TaskExtensions.T)
-                && node.Method.DeclaringType == typeof(TaskExtensions))
-            {
-                node = (MethodCallExpression) node.Object;
             }
             
             return Expression.Call(node.Object, node.Method, argumentExpressions);
