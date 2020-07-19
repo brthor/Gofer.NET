@@ -35,7 +35,13 @@ namespace Gofer.NET
             var taskInfo = expression.ToTaskInfo();
             await Enqueue(taskInfo);
         }
-        
+
+        public async Task Enqueue<T>(Expression<Func<T>> expression)
+        {
+            var taskInfo = expression.ToTaskInfo();
+            await Enqueue(taskInfo);
+        }
+
         internal async Task Enqueue(TaskInfo taskInfo)
         {
             taskInfo.ConvertTypeArgs();
@@ -43,8 +49,8 @@ namespace Gofer.NET
 
             await Backend.Enqueue(Config.QueueName, jsonString);
         }
-        
-        public async Task<bool> ExecuteNext()
+
+        public async Task<bool> ExecuteNext(CancellationToken cancellation = default)
         {
             var (taskJsonString, taskInfo) = await SafeDequeue();
 
@@ -55,7 +61,7 @@ namespace Gofer.NET
 
             try
             {
-                await taskInfo.ExecuteTask();
+                await taskInfo.ExecuteTask(cancellation);
             }
             finally
             {

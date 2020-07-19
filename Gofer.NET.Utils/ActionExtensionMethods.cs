@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading;
 
 namespace Gofer.NET.Utils
 {
@@ -11,15 +12,15 @@ namespace Gofer.NET.Utils
         {
             var methodCallArgumentResolutionVisitor = new MethodCallArgumentResolutionVisitor();
             var expressionWithArgumentsResolved =
-                (Expression<Action>) methodCallArgumentResolutionVisitor.Visit(expression);
+                (Expression<Action>)methodCallArgumentResolutionVisitor.Visit(expression);
 
-            var method = ((MethodCallExpression) expressionWithArgumentsResolved.Body);
+            var method = ((MethodCallExpression)expressionWithArgumentsResolved.Body);
             var m = method.Method;
             var args = method.Arguments
                 .Select(a =>
                 {
-                    var value = ((ConstantExpression) a).Value;
-                    return value;
+                    var value = ((ConstantExpression)a).Value;
+                    return value is CancellationToken ? null : value;
                 })
                 .ToArray();
 
@@ -27,20 +28,20 @@ namespace Gofer.NET.Utils
 
             return taskInfo;
         }
-        
+
         public static TaskInfo ToTaskInfo<T>(this Expression<Func<T>> expression)
         {
             var methodCallArgumentResolutionVisitor = new MethodCallArgumentResolutionVisitor();
             var expressionWithArgumentsResolved =
-                (Expression<Func<T>>) methodCallArgumentResolutionVisitor.Visit(expression);
+                (Expression<Func<T>>)methodCallArgumentResolutionVisitor.Visit(expression);
 
-            var method = ((MethodCallExpression) expressionWithArgumentsResolved.Body);
+            var method = ((MethodCallExpression)expressionWithArgumentsResolved.Body);
             var m = method.Method;
             var args = method.Arguments
                 .Select(a =>
                 {
-                    var value = ((ConstantExpression) a).Value;
-                    return value;
+                    var value = ((ConstantExpression)a).Value;
+                    return value is CancellationToken ? null : value;
                 })
                 .ToArray();
 
@@ -48,13 +49,13 @@ namespace Gofer.NET.Utils
 
             return taskInfo;
         }
-        
+
         public static TaskInfo ToTaskInfo(this MethodInfo method, object[] args)
         {
             var methodParams = method.GetParameters();
             var argTypes = new Type[methodParams.Length];
-            
-            for (var i=0; i < methodParams.Length; ++ i)
+
+            for (var i = 0; i < methodParams.Length; ++i)
             {
                 argTypes[i] = methodParams[i].ParameterType;
             }
@@ -70,7 +71,7 @@ namespace Gofer.NET.Utils
                 CreatedAtUtc = DateTime.UtcNow,
                 ReturnType = method.ReturnType
             };
-            
+
             return taskInfo;
         }
     }

@@ -1,12 +1,13 @@
 using System;
-using System.IO;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Gofer.NET.Utils;
-using Xunit;
+
 using FluentAssertions;
-using System.Reflection;
+
+using Gofer.NET.Utils;
+
+using Xunit;
 
 namespace Gofer.NET.Tests
 {
@@ -14,13 +15,15 @@ namespace Gofer.NET.Tests
     {
         [Fact]
         public void ItPersistsPropertiesWhenSerializedAndDeserialized()
-        {  
+        {
             var taskInfos = new[] {
                 GetTestTask(() => TestMethod1("hello world")),
-                GetTestTask(() => TestMethod2())
+                GetTestTask(() => TestMethod2()),
+                GetTestTask(() => TestMethod3(default))
             };
 
-            foreach (var taskInfo in taskInfos) {
+            foreach (var taskInfo in taskInfos)
+            {
                 var serializedTaskInfo = JsonTaskInfoSerializer.Serialize(taskInfo);
                 var deserializedTaskInfo = JsonTaskInfoSerializer.Deserialize<TaskInfo>(serializedTaskInfo);
 
@@ -47,8 +50,11 @@ namespace Gofer.NET.Tests
             var taskInfo2a = GetTestTask(() => TestMethod2());
             var taskInfo2b = GetTestTask(() => TestMethod2());
 
-            var taskInfo3a = GetTestTask(() => Console.WriteLine("hello"));
-            var taskInfo3b = GetTestTask(() => Console.WriteLine("hello world"));
+            var taskInfo3a = GetTestTask(() => TestMethod3(default));
+            var taskInfo3b = GetTestTask(() => TestMethod3(new CancellationTokenSource().Token));
+
+            var taskInfo4a = GetTestTask(() => Console.WriteLine("hello"));
+            var taskInfo4b = GetTestTask(() => Console.WriteLine("hello world"));
 
             taskInfo1a.IsEquivalent(taskInfo1a).Should().BeTrue();
             taskInfo1a.IsEquivalent(taskInfo1b).Should().BeTrue();
@@ -63,10 +69,13 @@ namespace Gofer.NET.Tests
             taskInfo2a.IsEquivalent(taskInfo3a).Should().BeFalse();
 
             taskInfo3a.IsEquivalent(taskInfo3a).Should().BeTrue();
-            taskInfo3a.IsEquivalent(taskInfo3b).Should().BeFalse();
+            taskInfo3a.IsEquivalent(taskInfo3b).Should().BeTrue();
+
+            taskInfo4a.IsEquivalent(taskInfo4a).Should().BeTrue();
+            taskInfo4a.IsEquivalent(taskInfo4b).Should().BeFalse();
         }
 
-        private TaskInfo GetTestTask(Expression<Action> action) 
+        private TaskInfo GetTestTask(Expression<Action> action)
         {
             return action.ToTaskInfo();
         }
@@ -79,6 +88,12 @@ namespace Gofer.NET.Tests
         private void TestMethod2()
         {
             Console.WriteLine(nameof(TestMethod2));
+        }
+
+        private Task<string> TestMethod3(CancellationToken cancellation = default)
+        {
+            Console.WriteLine(nameof(TestMethod3));
+            return Task.FromResult(nameof(TestMethod3));
         }
     }
 }

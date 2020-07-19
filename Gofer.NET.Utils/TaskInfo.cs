@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using Gofer.NET.Utils.Errors;
 
@@ -43,7 +44,7 @@ namespace Gofer.NET.Utils
             }
 
             for (var i=0; i<Args.Length; ++i) {
-                if (!Args[i].Equals(otherTaskInfo.Args[i]))
+                if (!Equals(Args[i], otherTaskInfo.Args[i]))
                 {
                     return false;
                 }
@@ -79,11 +80,25 @@ namespace Gofer.NET.Utils
             }
         }
 
-        private async Task<object> InvokeMethod(MethodInfo method, object instance)
+        private object[] GetInvokeArgs(CancellationToken cancellation)
         {
+            var args = Args.ToArray();
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (ArgTypes[i] == typeof(CancellationToken))
+                    args[i] = cancellation;
+            }
+
+            return args;
+        }
+
+        private async Task<object> InvokeMethod(MethodInfo method, object instance, CancellationToken cancellation)
+        {
+           var args = GetInvokeArgs(cancellation);
+
             if (method.IsAsync())
             {
-                var result = method.Invoke(instance, Args);
+                var result = method.Invoke(instance, args);
 
                 var task = (Task) result;
                 await task;
@@ -102,10 +117,10 @@ namespace Gofer.NET.Utils
                 return resultValue;
             }
             
-            return method.Invoke(instance, Args);
+            return method.Invoke(instance, args);
         }
 
-        public async Task<object> ExecuteTask()
+        public async Task<object> ExecuteTask(CancellationToken token)
         {
             var assembly = Assembly.Load(AssemblyName);
             var type = assembly.GetType(TypeName);
@@ -118,7 +133,7 @@ namespace Gofer.NET.Utils
 
             if (staticMethod != null)
             {
-                return await InvokeMethod(staticMethod, null);
+                return await InvokeMethod(staticMethod, null, token);
             }
             
             var instanceMethod = type.GetMethod(MethodName, 
@@ -134,7 +149,7 @@ namespace Gofer.NET.Utils
 
             var instance = Activator.CreateInstance(type);
             
-            return await InvokeMethod(instanceMethod, instance);
+            return await InvokeMethod(instanceMethod, instance, token);
         }
     }
 }

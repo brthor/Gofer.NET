@@ -1,4 +1,4 @@
-﻿using System;
+﻿
 using Newtonsoft.Json;
 
 namespace Gofer.NET.Utils
@@ -7,7 +7,7 @@ namespace Gofer.NET.Utils
     {
         public static string Serialize(TaskInfo taskInfo)
         {
-            return Serialize((object) taskInfo);
+            return Serialize((object)taskInfo);
         }
 
         public static string Serialize(object obj)
@@ -20,7 +20,8 @@ namespace Gofer.NET.Utils
 
             settings.Converters.Insert(0, new JsonPrimitiveConverter());
             settings.Converters.Insert(1, new ExceptionConverter());
-            
+            settings.Converters.Insert(2, new JsonSkipCancellationTokenConverter());
+
             var jsonString = JsonConvert.SerializeObject(obj, settings);
 
             return jsonString;
@@ -30,21 +31,23 @@ namespace Gofer.NET.Utils
         {
             return Deserialize<TaskInfo>(taskInfoJsonString);
         }
-        
-        public static T Deserialize<T>(string jsonString) where T : class 
+
+        public static T Deserialize<T>(string jsonString) where T : class
         {
             if (jsonString == null)
             {
                 return null;
             }
-            
+
             var settings = new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.All,
                 TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Full
             };
+
             settings.Converters.Insert(0, new JsonPrimitiveConverter());
             settings.Converters.Insert(1, new ExceptionConverter());
+            settings.Converters.Insert(2, new JsonSkipCancellationTokenConverter());
 
             var obj = JsonConvert.DeserializeObject<T>(jsonString, settings);
             return obj;
