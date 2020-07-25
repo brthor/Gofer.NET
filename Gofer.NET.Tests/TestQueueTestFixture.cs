@@ -72,7 +72,7 @@ namespace Gofer.NET.Tests
             WriteSemaphoreValue(semaphoreFile, SemaphoreText);
         }
 
-        public static async Task WaitForCancellationAndWriteSemaphore(string semaphoreFile, CancellationToken token = default)
+        public static async Task WaitForCancellationAndWriteSemaphore(string semaphoreFile, CancellationToken token)
         {
             try
             {

@@ -51,8 +51,8 @@ namespace Gofer.NET.Tests
                 TC(() => ExceptionFunc(new Exception(), semaphoreFile), new Exception().ToString()),
                 TC(() => ExceptionFunc(new CustomException(), semaphoreFile), new CustomException().ToString()),
 
-                // Cancelation Argument
-                TC(() => CancellationFunc(default, semaphoreFile), new CancellationToken().ToString()),
+                // Cancellation Argument
+                TC(() => CancellationFunc(new CancellationToken(), semaphoreFile), new CancellationToken().ToString()),
                 
                 // Integer Arguments
                 TC(() => IntFunc(int.MaxValue, semaphoreFile), int.MaxValue.ToString()),

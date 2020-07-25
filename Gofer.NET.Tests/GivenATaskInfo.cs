@@ -90,7 +90,7 @@ namespace Gofer.NET.Tests
             Console.WriteLine(nameof(TestMethod2));
         }
 
-        private Task<string> TestMethod3(CancellationToken cancellation = default)
+        private Task<string> TestMethod3(CancellationToken cancellation)
         {
             Console.WriteLine(nameof(TestMethod3));
             return Task.FromResult(nameof(TestMethod3));

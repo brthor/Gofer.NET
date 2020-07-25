@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Threading;
 
 namespace Gofer.NET.Utils
 {
@@ -20,7 +19,7 @@ namespace Gofer.NET.Utils
                 .Select(a =>
                 {
                     var value = ((ConstantExpression)a).Value;
-                    return value is CancellationToken ? null : value;
+                    return value;
                 })
                 .ToArray();
 
@@ -41,7 +40,7 @@ namespace Gofer.NET.Utils
                 .Select(a =>
                 {
                     var value = ((ConstantExpression)a).Value;
-                    return value is CancellationToken ? null : value;
+                    return value;
                 })
                 .ToArray();
 
