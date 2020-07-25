@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,7 +20,7 @@ namespace Gofer.NET.Tests
             var taskInfos = new[] {
                 GetTestTask(() => TestMethod1("hello world")),
                 GetTestTask(() => TestMethod2()),
-                GetTestTask(() => TestMethod3(default))
+                GetTestTask(() => TestMethod3(new CancellationToken()))
             };
 
             foreach (var taskInfo in taskInfos)
@@ -27,12 +28,15 @@ namespace Gofer.NET.Tests
                 var serializedTaskInfo = JsonTaskInfoSerializer.Serialize(taskInfo);
                 var deserializedTaskInfo = JsonTaskInfoSerializer.Deserialize<TaskInfo>(serializedTaskInfo);
 
+                // we do skip cancellation tokens as they are ignored on serialization
+                var importantTaskArgs = taskInfo.Args.Select(a => a is CancellationToken ? null : a).ToArray();
+
                 deserializedTaskInfo.Id.Should().Be(taskInfo.Id);
                 deserializedTaskInfo.AssemblyName.Should().Be(taskInfo.AssemblyName);
                 deserializedTaskInfo.TypeName.Should().Be(taskInfo.TypeName);
                 deserializedTaskInfo.MethodName.Should().Be(taskInfo.MethodName);
                 deserializedTaskInfo.ReturnType.Should().Be(taskInfo.ReturnType);
-                deserializedTaskInfo.Args.ShouldAllBeEquivalentTo(taskInfo.Args);
+                deserializedTaskInfo.Args.ShouldAllBeEquivalentTo(importantTaskArgs);
                 deserializedTaskInfo.ArgTypes.ShouldAllBeEquivalentTo(taskInfo.ArgTypes);
                 deserializedTaskInfo.CreatedAtUtc.Should().Be(taskInfo.CreatedAtUtc);
 
@@ -50,7 +54,7 @@ namespace Gofer.NET.Tests
             var taskInfo2a = GetTestTask(() => TestMethod2());
             var taskInfo2b = GetTestTask(() => TestMethod2());
 
-            var taskInfo3a = GetTestTask(() => TestMethod3(default));
+            var taskInfo3a = GetTestTask(() => TestMethod3(new CancellationToken()));
             var taskInfo3b = GetTestTask(() => TestMethod3(new CancellationTokenSource().Token));
 
             var taskInfo4a = GetTestTask(() => Console.WriteLine("hello"));

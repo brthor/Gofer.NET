@@ -43,8 +43,12 @@ namespace Gofer.NET.Utils
                 return false;
             }
 
-            for (var i=0; i<Args.Length; ++i) {
-                if (!Equals(Args[i], otherTaskInfo.Args[i]))
+            for (var i = 0; i < Args.Length; ++i)
+            {
+                // comparison ignores cancellation tokens
+                // as they are ignored on serialization
+                // and will be replaced with proper value at invocation time
+                if (!Equals(GetEquivalenceArg(Args[i]), GetEquivalenceArg(otherTaskInfo.Args[i])))
                 {
                     return false;
                 }
@@ -54,6 +58,11 @@ namespace Gofer.NET.Utils
                 && string.Equals(TypeName, otherTaskInfo.TypeName, StringComparison.Ordinal)
                 && string.Equals(MethodName, otherTaskInfo.MethodName, StringComparison.Ordinal)
                 && ReturnType.Equals(otherTaskInfo.ReturnType);
+        }
+
+        private object GetEquivalenceArg(object value)
+        {
+            return value is CancellationToken ? null : value;
         }
 
         public void ConvertTypeArgs() 
@@ -68,14 +77,16 @@ namespace Gofer.NET.Utils
             }
         }
 
-        public void UnconvertTypeArgs() 
+        public void UnconvertTypeArgs()
         {
-            for (var i=0;i<Args.Length;++i) {
+            for (var i = 0; i < Args.Length; ++i)
+            {
                 if (Args[i] == null)
                     continue;
-                    
-                if (typeof(TypeWrapper).IsAssignableFrom(Args[i].GetType())) {
-                    Args[i] = ((TypeWrapper) Args[i]).Type;
+
+                if (typeof(TypeWrapper).IsAssignableFrom(Args[i].GetType()))
+                {
+                    Args[i] = ((TypeWrapper)Args[i]).Type;
                 }
             }
         }
