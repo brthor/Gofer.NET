@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,11 +9,13 @@ namespace Gofer.NET
 {
     public class TaskClient
     {
+        private static readonly AsyncLocal<CancellationToken> _listenCancellationContext = new AsyncLocal<CancellationToken>();
+
         private static readonly object Locker = new object();
 
         private const int PollDelay = 100;
 
-        private bool IsCanceled { get; set; }
+        public static CancellationToken GetListenCancellation() => _listenCancellationContext.Value;
 
         public TaskQueue TaskQueue { get; }
 
@@ -33,7 +36,6 @@ namespace Gofer.NET
             TaskQueue = taskQueue;
             OnError = onError;
             TaskScheduler = new TaskScheduler(TaskQueue);
-            IsCanceled = false;
         }
 
         public Task Listen()
@@ -79,7 +81,7 @@ namespace Gofer.NET
 
                     await inThreadTaskScheduler.Tick();
                 }
-            }, ListenCancellationTokenSource.Token);
+            }, token);
 
             TaskRunnerThread = Task.Run(async () =>
             {
@@ -92,7 +94,7 @@ namespace Gofer.NET
 
                     await ExecuteQueuedTask(token);
                 }
-            }, ListenCancellationTokenSource.Token);
+            }, token);
 
             return ListenCancellationTokenSource;
         }
@@ -103,19 +105,24 @@ namespace Gofer.NET
             if (info != null)
             {
                 LogTaskStarted(info);
-
+                var old = _listenCancellationContext.Value;
                 try
                 {
-                    var now = DateTime.Now;
+                    _listenCancellationContext.Value = token;
 
-                    await info.ExecuteTask(token);
-
-                    var completionSeconds = (DateTime.Now - now).TotalSeconds;
+                    var executionTimer = Stopwatch.StartNew();
+                    await info.ExecuteTask();
+                    executionTimer.Stop();
+                    var completionSeconds = executionTimer.Elapsed.TotalSeconds;
                     LogTaskFinished(info, completionSeconds);
                 }
                 catch (Exception e)
                 {
                     LogTaskException(info, e);
+                }
+                finally
+                {
+                    _listenCancellationContext.Value = old;
                 }
             }
         }

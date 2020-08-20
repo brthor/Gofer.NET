@@ -44,7 +44,7 @@ namespace Gofer.NET.Tests
             var taskClient = new TaskClient(taskQueue);
             var cancellation = new CancellationTokenSource();
 
-            await taskClient.TaskQueue.Enqueue(() => TaskQueueTestFixture.WaitForCancellationAndWriteSemaphore(semaphoreFile, default));
+            await taskClient.TaskQueue.Enqueue(() => TaskQueueTestFixture.WaitForTaskClientCancellationAndWriteSemaphore(semaphoreFile));
 
             var task = Task.Run(async () => await taskClient.Listen(cancellation.Token), CancellationToken.None);
             await Task.Delay(waitTime, CancellationToken.None);

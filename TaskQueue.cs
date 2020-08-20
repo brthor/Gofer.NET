@@ -49,8 +49,8 @@ namespace Gofer.NET
 
             await Backend.Enqueue(Config.QueueName, jsonString);
         }
-
-        public async Task<bool> ExecuteNext(CancellationToken cancellation = default)
+        
+        public async Task<bool> ExecuteNext()
         {
             var (taskJsonString, taskInfo) = await SafeDequeue();
 
@@ -61,7 +61,7 @@ namespace Gofer.NET
 
             try
             {
-                await taskInfo.ExecuteTask(cancellation);
+                await taskInfo.ExecuteTask();
             }
             finally
             {

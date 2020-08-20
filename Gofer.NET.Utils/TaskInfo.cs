@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
-using System.Threading;
 using System.Threading.Tasks;
 using Gofer.NET.Utils.Errors;
 
@@ -43,12 +42,8 @@ namespace Gofer.NET.Utils
                 return false;
             }
 
-            for (var i = 0; i < Args.Length; ++i)
-            {
-                // comparison ignores cancellation tokens
-                // as they are ignored on serialization
-                // and will be replaced with proper value at invocation time
-                if (!Equals(GetEquivalenceArg(Args[i]), GetEquivalenceArg(otherTaskInfo.Args[i])))
+            for (var i=0; i<Args.Length; ++i) {
+                if (!Args[i].Equals(otherTaskInfo.Args[i]))
                 {
                     return false;
                 }
@@ -58,11 +53,6 @@ namespace Gofer.NET.Utils
                 && string.Equals(TypeName, otherTaskInfo.TypeName, StringComparison.Ordinal)
                 && string.Equals(MethodName, otherTaskInfo.MethodName, StringComparison.Ordinal)
                 && ReturnType.Equals(otherTaskInfo.ReturnType);
-        }
-
-        private object GetEquivalenceArg(object value)
-        {
-            return value is CancellationToken ? null : value;
         }
 
         public void ConvertTypeArgs() 
@@ -77,39 +67,23 @@ namespace Gofer.NET.Utils
             }
         }
 
-        public void UnconvertTypeArgs()
+        public void UnconvertTypeArgs() 
         {
-            for (var i = 0; i < Args.Length; ++i)
-            {
+            for (var i=0;i<Args.Length;++i) {
                 if (Args[i] == null)
                     continue;
-
-                if (typeof(TypeWrapper).IsAssignableFrom(Args[i].GetType()))
-                {
-                    Args[i] = ((TypeWrapper)Args[i]).Type;
+                    
+                if (typeof(TypeWrapper).IsAssignableFrom(Args[i].GetType())) {
+                    Args[i] = ((TypeWrapper) Args[i]).Type;
                 }
             }
         }
 
-        private object[] GetInvokeArgs(CancellationToken cancellation)
+        private async Task<object> InvokeMethod(MethodInfo method, object instance)
         {
-            var args = Args.ToArray();
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (ArgTypes[i] == typeof(CancellationToken))
-                    args[i] = cancellation;
-            }
-
-            return args;
-        }
-
-        private async Task<object> InvokeMethod(MethodInfo method, object instance, CancellationToken cancellation)
-        {
-           var args = GetInvokeArgs(cancellation);
-
             if (method.IsAsync())
             {
-                var result = method.Invoke(instance, args);
+                var result = method.Invoke(instance, Args);
 
                 var task = (Task) result;
                 await task;
@@ -128,10 +102,10 @@ namespace Gofer.NET.Utils
                 return resultValue;
             }
             
-            return method.Invoke(instance, args);
+            return method.Invoke(instance, Args);
         }
 
-        public async Task<object> ExecuteTask(CancellationToken token)
+        public async Task<object> ExecuteTask()
         {
             var assembly = Assembly.Load(AssemblyName);
             var type = assembly.GetType(TypeName);
@@ -144,7 +118,7 @@ namespace Gofer.NET.Utils
 
             if (staticMethod != null)
             {
-                return await InvokeMethod(staticMethod, null, token);
+                return await InvokeMethod(staticMethod, null);
             }
             
             var instanceMethod = type.GetMethod(MethodName, 
@@ -160,7 +134,7 @@ namespace Gofer.NET.Utils
 
             var instance = Activator.CreateInstance(type);
             
-            return await InvokeMethod(instanceMethod, instance, token);
+            return await InvokeMethod(instanceMethod, instance);
         }
     }
 }

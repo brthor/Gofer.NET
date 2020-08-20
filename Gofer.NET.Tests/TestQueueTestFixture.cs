@@ -36,11 +36,11 @@ namespace Gofer.NET.Tests
             while (TaskQueue.Dequeue().Result != null) { }
         }
 
-        public async Task PushPopExecuteWriteSemaphore(CancellationToken cancellation = default)
+        public async Task PushPopExecuteWriteSemaphore()
         {
             await TaskQueue.Enqueue(() => WriteSemaphore(_semaphoreFile));
             var dequeuedTaskInfo = await TaskQueue.Dequeue();
-            await dequeuedTaskInfo.ExecuteTask(cancellation);
+            await dequeuedTaskInfo.ExecuteTask();
         }
 
         public void EnsureSemaphoreDoesntExist()
@@ -72,8 +72,11 @@ namespace Gofer.NET.Tests
             WriteSemaphoreValue(semaphoreFile, SemaphoreText);
         }
 
-        public static async Task WaitForCancellationAndWriteSemaphore(string semaphoreFile, CancellationToken token)
+        public static async Task WaitForTaskClientCancellationAndWriteSemaphore(string semaphoreFile)
         {
+            var token = TaskClient.GetListenCancellation();
+            if (!token.CanBeCanceled)
+                throw new InvalidOperationException("This method must be called from a task client callback");
             try
             {
                 await Task.Delay(-1, token);
