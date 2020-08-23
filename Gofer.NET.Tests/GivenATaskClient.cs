@@ -37,14 +37,18 @@ namespace Gofer.NET.Tests
         public async Task ItStopsOnCancellation()
         {
             var semaphoreFile = Path.GetTempFileName();
+            var timeout = TimeSpan.FromMinutes(1);
 
-            var waitTime = 2000;
+            var waitTime = TimeSpan.FromSeconds(2);
 
             var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
             var taskClient = new TaskClient(taskQueue);
             var cancellation = new CancellationTokenSource();
 
-            await taskClient.TaskQueue.Enqueue(() => TaskQueueTestFixture.WaitForTaskClientCancellationAndWriteSemaphore(semaphoreFile));
+            await taskClient.TaskQueue.Enqueue(() =>
+                TaskQueueTestFixture.WaitForTaskClientCancellationAndWriteSemaphore(
+                    semaphoreFile,
+                    timeout));
 
             var task = Task.Run(async () => await taskClient.Listen(cancellation.Token), CancellationToken.None);
             await Task.Delay(waitTime, CancellationToken.None);

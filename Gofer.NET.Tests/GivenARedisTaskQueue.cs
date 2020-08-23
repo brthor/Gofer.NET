@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Gofer.NET.Utils;
@@ -35,14 +34,16 @@ namespace Gofer.NET.Tests
             var semaphoreFile = Path.GetTempFileName();
             var now = DateTime.Now;
             var utcNow = DateTime.UtcNow;
+            var nowOffset = DateTimeOffset.Now;
+            var utcNowOffset = DateTimeOffset.UtcNow;
 
             Func<Expression<Action>, string, Tuple<Expression<Action>, string>> TC = (actionExp, str) =>
                 Tuple.Create<Expression<Action>, string>(
                     actionExp,
                     str);
-            
+
             // Action to expected result
-            var delgates = new Tuple<Expression<Action>, string>[]
+            var delegates = new Tuple<Expression<Action>, string>[]
             {
                 // Exception Argument
                 TC(() => ExceptionFunc(new Exception(), semaphoreFile), new Exception().ToString()),
@@ -73,6 +74,8 @@ namespace Gofer.NET.Tests
                 TC(() => StringFunc("astring", semaphoreFile), "astring"),
                 TC(() => StringFunc(variableToExtract, semaphoreFile), variableToExtract),
 
+                TC(() => TimeSpanFunc(TimeSpan.FromMinutes(1), semaphoreFile), TimeSpan.FromMinutes(1).ToString()),
+
                 // Object Arguments + Overloaded Version
                 TC(() => ObjectFunc(new TestDataHolder {Value = "astring"}, semaphoreFile), "astring"),
                 TC(() => ObjectFunc(null, new TestDataHolder {Value = "astring"}, semaphoreFile), "astring"),
@@ -80,8 +83,12 @@ namespace Gofer.NET.Tests
                 TC(() => DateTimeFunc(now, semaphoreFile), now.ToString()),
                 TC(() => DateTimeFunc(utcNow, semaphoreFile), utcNow.ToString()),
 
+                TC(() => DateTimeOffsetFunc(nowOffset, semaphoreFile), nowOffset.ToString()),
+                TC(() => DateTimeOffsetFunc(utcNowOffset, semaphoreFile), utcNowOffset.ToString()),
+
                 TC(() => NullableTypeFunc(null, semaphoreFile), "null"),
                 TC(() => NullableTypeFunc(now, semaphoreFile), now.ToString()),
+                TC(() => NullableTypeFunc2(nowOffset, semaphoreFile), nowOffset.ToString()),
                 TC(() => ArrayFunc1(new[] {"this", "string", "is"}, semaphoreFile), "this,string,is"),
                 TC(() => ArrayFunc2(new[] {1, 2, 3, 4}, semaphoreFile), "1,2,3,4"),
                 TC(() => ArrayFunc3(new int?[] {1, 2, 3, null, 5}, semaphoreFile), "1,2,3,null,5"),
@@ -99,9 +106,8 @@ namespace Gofer.NET.Tests
                 TC(() => AsyncFunc(semaphoreFile).T(), "async"),
                 TC(() => AsyncFuncThatReturnsString(semaphoreFile).T(), "async")
             };
-            
 
-            foreach (var tup in delgates)
+            foreach (var tup in delegates)
             {
                 var actionExpr = tup.Item1;
                 var expectedString = tup.Item2;
@@ -193,8 +199,18 @@ namespace Gofer.NET.Tests
         {
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, dateTime);
         }
-        
+
+        public void NullableTypeFunc2(DateTimeOffset? dateTime, string semaphoreFile)
+        {
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, dateTime);
+        }
+
         public void DateTimeFunc(DateTime dateTime, string semaphoreFile)
+        {
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, dateTime);
+        }
+
+        public void DateTimeOffsetFunc(DateTimeOffset dateTime, string semaphoreFile)
         {
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, dateTime);
         }
@@ -233,7 +249,12 @@ namespace Gofer.NET.Tests
         {
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
         }
-        
+
+        public void TimeSpanFunc(TimeSpan num, string semaphoreFile)
+        {
+            TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);
+        }
+
         public void ObjectFunc(object num, string semaphoreFile)
         {
             TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, num);

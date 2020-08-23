@@ -72,14 +72,14 @@ namespace Gofer.NET.Tests
             WriteSemaphoreValue(semaphoreFile, SemaphoreText);
         }
 
-        public static async Task WaitForTaskClientCancellationAndWriteSemaphore(string semaphoreFile)
+        public static async Task WaitForTaskClientCancellationAndWriteSemaphore(string semaphoreFile, TimeSpan timeout)
         {
             var token = TaskClient.GetListenCancellation();
             if (!token.CanBeCanceled)
                 throw new InvalidOperationException("This method must be called from a task client callback");
             try
             {
-                await Task.Delay(-1, token);
+                await Task.Delay(timeout, token);
             }
             catch (OperationCanceledException)
             {
