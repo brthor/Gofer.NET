@@ -38,6 +38,11 @@ namespace Gofer.NET
             return jsonStrings.Select(v => (string) v);
         }
 
+        public async Task<long> GetQueueDepth(string queueKey)
+        {
+            return await RedisQueue.GetQueueDepth(queueKey);
+        }
+
         public async Task<IBackendLock> LockBlocking(string lockKey)
         {
             return await Redis.LockBlockingAsync(lockKey);
