@@ -26,7 +26,7 @@ namespace Gofer.NET
             Redis = redis;
         }
         
-        public async Task<long> GetQueueDepth(RedisKey queueName)
+        public async Task<long> Count(RedisKey queueName)
         {
             return await Redis.GetDatabase().ListLengthAsync(queueName);
         }

@@ -44,9 +44,9 @@ namespace Gofer.NET
             await Backend.Enqueue(Config.QueueName, jsonString);
         }
 
-        public async Task<long> GetQueueDepth()
+        public async Task<long> Count()
         {
-            return await Backend.GetQueueDepth(Config.QueueName);
+            return await Backend.QueueCount(Config.QueueName);
         }
         
         public async Task<bool> ExecuteNext()
