@@ -11,8 +11,8 @@ namespace Gofer.NET
     public class TaskClient
     {
         private static readonly object Locker = new object();
-        
-        private const int PollDelay = 100;
+
+        public int PollDelay { get; set; } = 100;
 
         private bool IsCanceled { get; set; }
         
@@ -80,6 +80,7 @@ namespace Gofer.NET
                     }
                     
                     await ExecuteQueuedTask();
+                    Thread.Sleep(PollDelay);
                 }
             }, ListenCancellationTokenSource.Token);
 
