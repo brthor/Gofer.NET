@@ -13,6 +13,8 @@ namespace Gofer.NET
 
         Task<IEnumerable<string>> DequeueBatch(string queueKey, int batchSize=100);
 
+        Task<long> QueueCount(string key);
+
         Task<IBackendLock> LockBlocking(string lockKey);
 
         Task<IBackendLock> LockNonBlocking(string lockKey);
