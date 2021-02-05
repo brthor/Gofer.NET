@@ -82,7 +82,7 @@ namespace Gofer.NET
                     }
                     
                     await ExecuteQueuedTask();
-                    Thread.Sleep(_pollDelay);
+                    await Task.Delay(_pollDelay);
                 }
             }, ListenCancellationTokenSource.Token);
 
