@@ -1,21 +1,22 @@
 ﻿using System;
-using System.ComponentModel;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Gofer.NET.Errors;
+
 using Gofer.NET.Utils;
-using Newtonsoft.Json;
 
 namespace Gofer.NET
 {
     public class TaskClient
     {
+        private static readonly AsyncLocal<CancellationToken> _listenCancellationContext = new AsyncLocal<CancellationToken>();
+
         private static readonly object Locker = new object();
-        
+
         private const int PollDelay = 100;
 
-        private bool IsCanceled { get; set; }
-        
+        public static CancellationToken GetListenCancellation() => _listenCancellationContext.Value;
+
         public TaskQueue TaskQueue { get; }
 
         public Action<Exception> OnError { get; }
@@ -29,35 +30,46 @@ namespace Gofer.NET
         private CancellationTokenSource ListenCancellationTokenSource { get; set; }
 
         public TaskClient(
-            TaskQueue taskQueue, 
-            Action<Exception> onError=null)
+            TaskQueue taskQueue,
+            Action<Exception> onError = null)
         {
             TaskQueue = taskQueue;
             OnError = onError;
             TaskScheduler = new TaskScheduler(TaskQueue);
-            IsCanceled = false;
         }
 
-        public async Task Listen()
+        public Task Listen()
         {
-            Start();
+            return Listen(CancellationToken.None);
+        }
 
-            await Task.WhenAll(new [] {
-                TaskRunnerThread, 
+        public async Task Listen(CancellationToken cancellation)
+        {
+            Start(cancellation);
+
+            await Task.WhenAll(new[] {
+                TaskRunnerThread,
                 TaskSchedulerThread});
         }
 
         public CancellationTokenSource Start()
+        {
+            return Start(CancellationToken.None);
+        }
+
+        public CancellationTokenSource Start(CancellationToken cancellation)
         {
             if (TaskSchedulerThread != null || TaskRunnerThread != null)
             {
                 throw new Exception("This TaskClient is already listening.");
             }
 
-            ListenCancellationTokenSource = new CancellationTokenSource();
+
+            ListenCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
             var token = ListenCancellationTokenSource.Token;
 
-            TaskSchedulerThread = Task.Run(async () => {
+            TaskSchedulerThread = Task.Run(async () =>
+            {
                 var inThreadTaskScheduler = new TaskScheduler(TaskQueue);
 
                 while (true)
@@ -69,42 +81,48 @@ namespace Gofer.NET
 
                     await inThreadTaskScheduler.Tick();
                 }
-            }, ListenCancellationTokenSource.Token);
+            }, token);
 
-            TaskRunnerThread = Task.Run(async () => {
+            TaskRunnerThread = Task.Run(async () =>
+            {
                 while (true)
                 {
                     if (token.IsCancellationRequested)
                     {
                         return;
                     }
-                    
-                    await ExecuteQueuedTask();
+
+                    await ExecuteQueuedTask(token);
                 }
-            }, ListenCancellationTokenSource.Token);
+            }, token);
 
             return ListenCancellationTokenSource;
         }
 
-        private async Task ExecuteQueuedTask()
+        private async Task ExecuteQueuedTask(CancellationToken token)
         {
             var (json, info) = await TaskQueue.SafeDequeue();
             if (info != null)
             {
                 LogTaskStarted(info);
-
+                var old = _listenCancellationContext.Value;
                 try
                 {
-                    var now = DateTime.Now;
-                    
+                    _listenCancellationContext.Value = token;
+
+                    var executionTimer = Stopwatch.StartNew();
                     await info.ExecuteTask();
-                    
-                    var completionSeconds = (DateTime.Now - now).TotalSeconds;
+                    executionTimer.Stop();
+                    var completionSeconds = executionTimer.Elapsed.TotalSeconds;
                     LogTaskFinished(info, completionSeconds);
                 }
                 catch (Exception e)
                 {
                     LogTaskException(info, e);
+                }
+                finally
+                {
+                    _listenCancellationContext.Value = old;
                 }
             }
         }
@@ -122,7 +140,7 @@ namespace Gofer.NET
             var logMessage = Messages.TaskStarted(info);
             ThreadSafeColoredConsole.Info(logMessage);
         }
-        
+
         private void LogTaskFinished(TaskInfo info, double completionSeconds)
         {
             var logMessage = Messages.TaskFinished(info, completionSeconds);

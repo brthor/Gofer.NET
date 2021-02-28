@@ -3,8 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using FluentAssertions;
-using Gofer.NET.Utils;
+
 using Xunit;
 
 namespace Gofer.NET.Tests
@@ -15,11 +16,11 @@ namespace Gofer.NET.Tests
         public async Task ItContinuesListeningWhenATaskThrowsAnException()
         {
             var waitTime = 5000;
-            
+
             var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
             var taskClient = new TaskClient(taskQueue);
             var semaphoreFile = Path.GetTempFileName();
-            
+
             await taskClient.TaskQueue.Enqueue(() => Throw());
             await taskClient.TaskQueue.Enqueue(() => TaskQueueTestFixture.WriteSemaphore(semaphoreFile));
 
@@ -28,7 +29,33 @@ namespace Gofer.NET.Tests
 
             taskClient.CancelListen();
             await task;
-            
+
+            TaskQueueTestFixture.EnsureSemaphore(semaphoreFile);
+        }
+
+        [Fact]
+        public async Task ItStopsOnCancellation()
+        {
+            var semaphoreFile = Path.GetTempFileName();
+            var timeout = TimeSpan.FromMinutes(1);
+
+            var waitTime = TimeSpan.FromSeconds(2);
+
+            var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
+            var taskClient = new TaskClient(taskQueue);
+            var cancellation = new CancellationTokenSource();
+
+            await taskClient.TaskQueue.Enqueue(() =>
+                TaskQueueTestFixture.WaitForTaskClientCancellationAndWriteSemaphore(
+                    semaphoreFile,
+                    timeout));
+
+            var task = Task.Run(async () => await taskClient.Listen(cancellation.Token), CancellationToken.None);
+            await Task.Delay(waitTime, CancellationToken.None);
+            cancellation.Cancel();
+            await Task.Delay(waitTime, CancellationToken.None);
+            await task;
+
             TaskQueueTestFixture.EnsureSemaphore(semaphoreFile);
         }
 
@@ -36,14 +63,14 @@ namespace Gofer.NET.Tests
         public async Task ItDoesNotDelayScheduledTaskPromotionWhenRunningLongTasks()
         {
             var waitTime = 4000;
-            
+
             var taskQueue = TaskQueueTestFixture.UniqueRedisTaskQueue();
             var taskClient = new TaskClient(taskQueue);
 
             var semaphoreFile = Path.GetTempFileName();
             File.Delete(semaphoreFile);
             File.Exists(semaphoreFile).Should().BeFalse();
-            
+
             await taskClient.TaskQueue.Enqueue(() => Wait(waitTime));
 
             await taskClient.TaskScheduler.AddScheduledTask(
@@ -51,14 +78,14 @@ namespace Gofer.NET.Tests
                 TimeSpan.FromMilliseconds(waitTime / 4));
 
             var task = Task.Run(async () => await taskClient.Listen());
-            
+
             await Task.Delay(waitTime / 2);
 
             // Ensure we did not run the scheduled task
             File.Exists(semaphoreFile).Should().BeFalse();
 
             var dequeuedScheduledTask = await taskQueue.Dequeue();
-            
+
             File.Exists(semaphoreFile).Should().BeFalse();
             dequeuedScheduledTask.Should().NotBeNull();
             dequeuedScheduledTask.MethodName.Should().Be(nameof(TaskQueueTestFixture.WriteSemaphore));
@@ -83,19 +110,19 @@ namespace Gofer.NET.Tests
             File.Delete(semaphoreFile);
             File.Exists(semaphoreFile).Should().BeFalse();
 
-            for (var i=0; i<immediateTasks; ++i)
+            for (var i = 0; i < immediateTasks; ++i)
             {
-                await taskClient.TaskQueue.Enqueue(() => 
-                    TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, (i+1).ToString()));
+                await taskClient.TaskQueue.Enqueue(() =>
+                    TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, (i + 1).ToString()));
             }
 
-            for (var i=0; i<scheduledTasks; ++i)
+            for (var i = 0; i < scheduledTasks; ++i)
             {
                 await taskClient.TaskScheduler.AddScheduledTask(
-                    () => TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, (immediateTasks+i+1).ToString()),
-                    TimeSpan.FromMilliseconds(scheduledTasksStart + (scheduledTasksIncrement*i)));
+                    () => TaskQueueTestFixture.WriteSemaphoreValue(semaphoreFile, (immediateTasks + i + 1).ToString()),
+                    TimeSpan.FromMilliseconds(scheduledTasksStart + (scheduledTasksIncrement * i)));
             }
-            
+
             var task = Task.Run(async () => await taskClient.Listen());
             Thread.Sleep(scheduledTasks * scheduledTasksIncrement + 2000);
 

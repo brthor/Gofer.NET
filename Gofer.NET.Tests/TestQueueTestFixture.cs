@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+
 using FluentAssertions;
 
 namespace Gofer.NET.Tests
@@ -9,30 +10,30 @@ namespace Gofer.NET.Tests
     public class TaskQueueTestFixture
     {
         private static readonly ReaderWriterLock Locker = new ReaderWriterLock();
-        
+
         public static string SemaphoreText => "completed";
-        
+
         public TaskQueue TaskQueue { get; }
-            
+
         public static string RedisConnectionString => "localhost:6379";
 
         private readonly string _semaphoreFile;
 
-        public static TaskQueue UniqueRedisTaskQueue(string prefix=null) 
+        public static TaskQueue UniqueRedisTaskQueue(string prefix = null)
         {
             var taskQueueName = $"{prefix ?? nameof(TaskQueueTestFixture)}::{Guid.NewGuid().ToString()}";
             return TaskQueue.Redis(RedisConnectionString, taskQueueName);
         }
 
-        public TaskQueueTestFixture(string uniqueId, TaskQueue taskQueue=null)
+        public TaskQueueTestFixture(string uniqueId, TaskQueue taskQueue = null)
         {
             _semaphoreFile = Path.Combine(AppContext.BaseDirectory, uniqueId, Path.GetTempFileName());
-            
+
             var testQueueName = uniqueId + "::TestQueue";
             TaskQueue = taskQueue ?? TaskQueueTestFixture.UniqueRedisTaskQueue(uniqueId);
-            
+
             // Clear out the queue
-            while(TaskQueue.Dequeue().Result != null) { }
+            while (TaskQueue.Dequeue().Result != null) { }
         }
 
         public async Task PushPopExecuteWriteSemaphore()
@@ -52,12 +53,12 @@ namespace Gofer.NET.Tests
         {
             EnsureSemaphore(_semaphoreFile);
         }
-        
+
         public static void EnsureSemaphore(string semaphoreFile)
         {
             try
             {
-                Locker.AcquireReaderLock(30000); 
+                Locker.AcquireReaderLock(30000);
                 File.ReadAllText(semaphoreFile).Should().Be(SemaphoreText);
             }
             finally
@@ -70,12 +71,27 @@ namespace Gofer.NET.Tests
         {
             WriteSemaphoreValue(semaphoreFile, SemaphoreText);
         }
-        
+
+        public static async Task WaitForTaskClientCancellationAndWriteSemaphore(string semaphoreFile, TimeSpan timeout)
+        {
+            var token = TaskClient.GetListenCancellation();
+            if (!token.CanBeCanceled)
+                throw new InvalidOperationException("This method must be called from a task client callback");
+            try
+            {
+                await Task.Delay(timeout, token);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            WriteSemaphore(semaphoreFile);
+        }
+
         public static void WriteSemaphoreValue(string semaphoreFile, object value)
         {
             try
             {
-                Locker.AcquireWriterLock(30000); 
+                Locker.AcquireWriterLock(30000);
                 File.AppendAllText(semaphoreFile, value?.ToString() ?? "null");
             }
             finally

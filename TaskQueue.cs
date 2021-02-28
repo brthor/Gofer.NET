@@ -35,7 +35,13 @@ namespace Gofer.NET
             var taskInfo = expression.ToTaskInfo();
             await Enqueue(taskInfo);
         }
-        
+
+        public async Task Enqueue<T>(Expression<Func<T>> expression)
+        {
+            var taskInfo = expression.ToTaskInfo();
+            await Enqueue(taskInfo);
+        }
+
         internal async Task Enqueue(TaskInfo taskInfo)
         {
             taskInfo.ConvertTypeArgs();

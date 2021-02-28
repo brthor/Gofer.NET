@@ -55,14 +55,15 @@ namespace Gofer.NET.Utils
                 && ReturnType.Equals(otherTaskInfo.ReturnType);
         }
 
-        public void ConvertTypeArgs() 
+        public void ConvertTypeArgs()
         {
             for (var i=0;i<Args.Length;++i) {
                 if (Args[i] == null)
                     continue;
 
-                if (typeof(Type).IsAssignableFrom(Args[i].GetType())) {
-                    Args[i] = new TypeWrapper {Type=(Type)Args[i]};
+                if (typeof(Type).IsInstanceOfType(Args[i]))
+                {
+                    Args[i] = new TypeWrapper { Type = (Type)Args[i] };
                 }
             }
         }
@@ -72,9 +73,20 @@ namespace Gofer.NET.Utils
             for (var i=0;i<Args.Length;++i) {
                 if (Args[i] == null)
                     continue;
-                    
-                if (typeof(TypeWrapper).IsAssignableFrom(Args[i].GetType())) {
-                    Args[i] = ((TypeWrapper) Args[i]).Type;
+
+                var argType = Nullable.GetUnderlyingType(ArgTypes[i]) ?? ArgTypes[i];
+
+                if (typeof(TypeWrapper).IsInstanceOfType(Args[i]))
+                {
+                    Args[i] = ((TypeWrapper)Args[i]).Type;
+                }
+                else if (typeof(TimeSpan).IsAssignableFrom(argType))
+                {
+                    Args[i] = TimeSpan.Parse((string)Args[i]);
+                }
+                else if (typeof(DateTime).IsAssignableFrom(argType) && Args[i] is DateTimeOffset dateTimeOffset)
+                {
+                    Args[i] = dateTimeOffset.DateTime;
                 }
             }
         }
